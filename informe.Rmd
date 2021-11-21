@@ -1,0 +1,124 @@
+---
+title: "Trabajo final Muestreo II"
+author: "Fiorella Lúngaro, Emanuelle Marsella y Maximiliano Saldaña"
+date: "Diciembre 2021"
+output: 
+ bookdown::pdf_document2:
+    toc: no
+    number_sections: true
+header-includes:
+  - \usepackage{float}
+  - \usepackage[spanish]{babel}
+editor_options: 
+  chunk_output_type: console
+---
+
+\newpage
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  include = FALSE,
+  warning = FALSE,
+  out.width = '80%',
+  fig.align="center"
+  )
+```
+
+
+
+```{r librerias}
+
+library(tidyverse)
+library(survey)
+library(PracTools)
+library(readxl)
+
+```
+
+# Parte 1
+
+```{r}
+# Carga la muestra
+muestra <- read_xlsx("datos/muestra grupo 2.xlsx")
+
+# Convertir las variables categóricas a su formato correspondiente
+
+muestra <- muestra %>% 
+  mutate(across(where(is.double) & !c(ingreso, w0)))
+
+
+summary(muestra$ingreso)
+
+```
+
+
+Se calculan las estimaciones puntuales de la tasa de desempleo, la proporción de personas pobres y del ingreso promedio, haciendo uso de los ponderadores originales $w_0$, es decir, sin ajustar por no respuesta. Esta estrategia de cómputo resulta correcta si el esquema de no respuesta que se considera es *Missing Completely at Random* (MCAR), bajo el cuál la probabilidad de responder no depende de las variables de interés ni auxiliares, todos las unidad del marco tienen la misma probabilidad de responder (Ferreira y Zoppolo, 2017).
+
+<!-- VER ESTO DEL MCAR, NO ESTOY SEGURO-->
+
+```{r}
+# Diseño usando los ponderadores originales
+##FPC?
+design1 <- svydesign(ids = ~id_hogar, strata = ~estrato, weights = ~w0, data = muestra)
+
+
+# No se hace ningún tipo de ajuste por no respuesta (o hay que distribuir los pesos de los NR?)
+
+## Tasa de desempleo (desempleados/activos)
+(tasa_desempleo1 <-  svyratio(~desocupado, ~activo,  design1, na.rm = TRUE, deff = TRUE))
+
+survey::deff(tasa_desempleo1)
+cv(tasa_desempleo1)
+
+
+## Proporción de personas pobres
+(pobres1 <-  svymean(~pobreza, design1, na.rm = TRUE, deff = TRUE))
+
+cv(pobres1)
+
+
+## Ingreso promedio
+(ingreso_mean1 <-  svymean(~ingreso,  design1, na.rm = TRUE, deff = TRUE))
+
+cv(ingreso_mean1)
+
+
+```
+
+
+La estimación puntual de la tasa de desempleo es del 8,2%, bla bla bla
+
+
+```{r}
+# tasa de no respuesta no ponderada
+1-mean(muestra$R)
+
+# tasa de no respuesta ponderada
+1-weighted.mean(muestra$R, weights = muestra$w0)
+
+summary(muestra$w0)
+
+
+#considerando por estratos
+
+muestra %>% 
+  group_by(estrato) %>% 
+  summarise(
+    prop_nr = 1-mean(R),
+    prop_nr_w0 = 1-weighted.mean(R, weights = w0)
+    )
+
+
+#considerando por departamento
+
+muestra %>% 
+  group_by(dpto) %>% 
+  summarise(
+    prop_nr = 1-mean(R),
+    prop_nr_w0 = 1-weighted.mean(R, weights = w0)
+    )
+```
+
+Tanto si se considera la ponderación como si no hay una tasa de no respuesta del 47% aproximadamente. El hecho de que no haya cambio en la proporción de no respondentes al considerar la ponderación puede deberse a que los pesos $w_0$ no son muy disímiles entre si, siendo su mínimo 104,4, su media 125.6 y su máximo 162. Al considerar la proporción de no respondentes por estrato se puede apreciar que ocurre lo mismo. En este caso se puede observar que la tasa de no respuesta varía según el estrato considerado, siendo el primero (Montevideo bajo) el que cuenta con la mayor tasa, del 55%, y el doceavo el que cuenta con la menor, del 44%. Estas diferencias se ven reflejadas también al considerar la tasa de no respondentes por departamento.
+
