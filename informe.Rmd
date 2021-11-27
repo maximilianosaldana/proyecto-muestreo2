@@ -5,7 +5,7 @@ date: "Diciembre 2021"
 output: 
  bookdown::pdf_document2:
     toc: no
-    number_sections: true
+    number_sections: false
 header-includes:
   - \usepackage{float}
   - \usepackage[spanish]{babel}
@@ -17,8 +17,8 @@ editor_options:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
-  echo = FALSE,
-  include = FALSE,
+  echo = TRUE,
+  include = TRUE,
   warning = FALSE,
   out.width = '80%',
   fig.align="center"
@@ -27,10 +27,10 @@ knitr::opts_chunk$set(
 
 
 
-```{r librerias}
+```{r librerias, include=FALSE}
 
 library(tidyverse)
-library(survey)
+library(srvyr)
 library(PracTools)
 library(readxl)
 
@@ -45,57 +45,76 @@ muestra <- read_xlsx("datos/muestra grupo 2.xlsx")
 # Convertir las variables categóricas a su formato correspondiente
 
 muestra <- muestra %>% 
-  mutate(across(where(is.double) & !c(ingreso, w0)))
-
-
-summary(muestra$ingreso)
+  mutate(across(where(is.double) & !c(ingreso, w0, edad, R), as.factor))
 
 ```
 
-
-Se calculan las estimaciones puntuales de la tasa de desempleo, la proporción de personas pobres y del ingreso promedio, haciendo uso de los ponderadores originales $w_0$, es decir, sin ajustar por no respuesta. Esta estrategia de cómputo resulta correcta si el esquema de no respuesta que se considera es *Missing Completely at Random* (MCAR), bajo el cuál la probabilidad de responder no depende de las variables de interés ni auxiliares, todos las unidad del marco tienen la misma probabilidad de responder (Ferreira y Zoppolo, 2017).
-
-<!-- VER ESTO DEL MCAR, NO ESTOY SEGURO-->
+Se calculan las estimaciones puntuales de la tasa de desempleo, la proporción de personas pobres y del ingreso promedio, haciendo uso de los ponderadores originales $w_0$, es decir, sin ajustar por no respuesta. Esta estrategia de cómputo resulta correcta si el esquema de no respuesta que se considera es *Missing Completely at Random* (MCAR), bajo el cual la probabilidad de responder no depende de las variables de interés ni auxiliares y todas las unidad del marco tienen la misma probabilidad de responder (Ferreira y Zoppolo, 2017).
 
 ```{r}
-# Diseño usando los ponderadores originales
+# Diseño usando los ponderadores originales, MCAR.
 ##FPC?
-design1 <- svydesign(ids = ~id_hogar, strata = ~estrato, weights = ~w0, data = muestra)
+design1 <- muestra %>%
+  filter(R==1) %>% 
+  as_survey_design(ids = id_hogar, strata = estrato, weights = w0)
+```
 
 
-# No se hace ningún tipo de ajuste por no respuesta (o hay que distribuir los pesos de los NR?)
-
+```{r}
 ## Tasa de desempleo (desempleados/activos)
-(tasa_desempleo1 <-  svyratio(~desocupado, ~activo,  design1, na.rm = TRUE, deff = TRUE))
 
-survey::deff(tasa_desempleo1)
-cv(tasa_desempleo1)
-
-
-## Proporción de personas pobres
-(pobres1 <-  svymean(~pobreza, design1, na.rm = TRUE, deff = TRUE))
-
-cv(pobres1)
-
-
-## Ingreso promedio
-(ingreso_mean1 <-  svymean(~ingreso,  design1, na.rm = TRUE, deff = TRUE))
-
-cv(ingreso_mean1)
+#REVISAR ESTO
+#Se piensa como un problema de estimación en dominios, nos interesan los desempleados considerando el grupo de los activos.
+design1 %>% 
+  filter(activo == 1) %>% 
+  group_by(desocupado) %>% 
+  summarise(tasa_desempleo = survey_mean(deff = TRUE, vartype = c('se','cv')))
 
 
 ```
 
 
-La estimación puntual de la tasa de desempleo es del 8,2%, bla bla bla
+La estimación puntual de la proporción de desempleados es 0,0824; mientras que el error estándar (la medida que empleamos para medir la variación del estimador entre muestra y muestra) es 0,0033. Otra medida de la calidad de un estimador $\hat{\theta}$ es su coeficiente de variación, que mide su dispersi\'on relativa. Se define como (Zoppollo, x):
+
+$$CV(\hat{\theta}) = \frac{\sqrt{\hat{V}(\hat{\theta})}}{\left|E(\hat{\theta})\right|}$$
+Y en el caso del estimador de la proporción de desempleados su estimación es 0,04.
+El efecto diseño es una medida que permite comparar la eficiencia en términos de variabilidad del estimador para el diseño utilizado, respecto al diseño aleatorio simple sin reposición que. Siendo $p(s)$ el diseño medible considerado, se define como:
+
+$$Deff(p(s), \hat{\theta}) = \frac{V_{p(s)}(\hat{\theta})}{V_{SI}(\hat{\theta})}$$
+En el caso del estimador de la proporción de desempleados su valor es 1,07; lo que indica que en este caso el diseño SI es un 7% más eficiente que el empleado.
+
 
 
 ```{r}
-# tasa de no respuesta no ponderada
-1-mean(muestra$R)
+## Proporción de personas pobres
+design1 %>% 
+  group_by(pobreza) %>% 
+  summarise(prop_pobres = survey_mean(deff = TRUE, vartype = c('se','cv')))
+```
 
-# tasa de no respuesta ponderada
-1-weighted.mean(muestra$R, weights = muestra$w0)
+En cuanto a la proporción de personas pobres, la estimación puntual es de 0,0811. El error estándar se estima que es 0,004 aproximadamente, mientras que el coeficiente de variación se estima que es 0,05 aproximadamente. La estimación del efecto diseño es 2,84; un elevado valor que indica que el diseño empleado es altamente ineficiente en comparación con el SI, en particular casi tres veces más. 
+
+
+```{r}
+## Ingreso promedio
+design1 %>% 
+  summarise(ingreso_prom = survey_mean(ingreso, deff = TRUE, vartype = c('se','cv')))
+```
+
+La estimación puntual del ingreso promedio es 21799, siendo la estimación de su error estándar 240. Por otro lado, el coeficiente de variación toma el valor 0,011. La estimación del efecto diseño es 0,94 aproximadamente, por lo que en este caso el diseño empelado resulta más eficiente que el SI, un 6% más.  
+
+
+```{r}
+
+muestra %>% 
+  summarise(
+    # tasa de no respuesta no ponderada
+    nr_np = 1 - mean(R),
+    # tasa de no respuesta ponderada
+    nr_p = 1 - weighted.mean(R, w0)
+  )
+
+
 
 summary(muestra$w0)
 
@@ -105,8 +124,10 @@ summary(muestra$w0)
 muestra %>% 
   group_by(estrato) %>% 
   summarise(
-    prop_nr = 1-mean(R),
-    prop_nr_w0 = 1-weighted.mean(R, weights = w0)
+    # tasa de no respuesta no ponderada
+    nr_np = mean(R),
+    # tasa de no respuesta ponderada
+    nr_p = weighted.mean(R, w0)
     )
 
 
@@ -115,10 +136,12 @@ muestra %>%
 muestra %>% 
   group_by(dpto) %>% 
   summarise(
-    prop_nr = 1-mean(R),
-    prop_nr_w0 = 1-weighted.mean(R, weights = w0)
+   # tasa de no respuesta no ponderada
+    nr_np = mean(R),
+    # tasa de no respuesta ponderada
+    nr_p = weighted.mean(R, w0)
     )
 ```
 
-Tanto si se considera la ponderación como si no hay una tasa de no respuesta del 47% aproximadamente. El hecho de que no haya cambio en la proporción de no respondentes al considerar la ponderación puede deberse a que los pesos $w_0$ no son muy disímiles entre si, siendo su mínimo 104,4, su media 125.6 y su máximo 162. Al considerar la proporción de no respondentes por estrato se puede apreciar que ocurre lo mismo. En este caso se puede observar que la tasa de no respuesta varía según el estrato considerado, siendo el primero (Montevideo bajo) el que cuenta con la mayor tasa, del 55%, y el doceavo el que cuenta con la menor, del 44%. Estas diferencias se ven reflejadas también al considerar la tasa de no respondentes por departamento.
+La tasa de no respuesta no ponderada es del 47,4% mientras que la ponderada es del 47,6%. El hecho de que ambas tasas de no respuesta sean similares puede deberse a que los pesos $w_0$ no son muy disímiles entre sí, siendo su mínimo 104,4; su media 125.6 y su máximo 162. Al considerar la proporción de no respondentes por estrato se puede apreciar que ocurre lo mismo. En este caso se puede observar que la tasa de no respuesta varía según el estrato considerado, siendo el primero (Montevideo bajo) el que cuenta con la mayor tasa, del 56%, y el doceavo el que cuenta con la menor, del 46%. Estas diferencias se ven reflejadas también al considerar la tasa de no respondentes por departamento.
 
