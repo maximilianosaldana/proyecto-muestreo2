@@ -31,6 +31,7 @@ knitr::opts_chunk$set(
 
 library(tidyverse)
 library(srvyr)
+library(survey)
 library(PracTools)
 library(readxl)
 
@@ -46,6 +47,11 @@ muestra <- read_xlsx("datos/muestra grupo 2.xlsx")
 
 muestra <- muestra %>% 
   mutate(across(where(is.double) & !c(ingreso, w0, edad, R), as.factor))
+
+muestra <- muestra %>% 
+  mutate(
+    edad = cut(edad, breaks=c(0, 14,20,25,30,40,50,60,Inf), right = FALSE)
+    )
 
 ```
 
@@ -141,7 +147,58 @@ muestra %>%
     # tasa de no respuesta ponderada
     nr_p = weighted.mean(R, w0)
     )
+
+#considerando por departamento
+
+muestra %>% 
+  group_by(edad) %>% 
+  summarise(
+   # tasa de no respuesta no ponderada
+    nr_np = mean(R),
+    # tasa de no respuesta ponderada
+    nr_p = weighted.mean(R, w0)
+    )
 ```
 
-La tasa de no respuesta no ponderada es del 47,4% mientras que la ponderada es del 47,6%. El hecho de que ambas tasas de no respuesta sean similares puede deberse a que los pesos $w_0$ no son muy disímiles entre sí, siendo su mínimo 104,4; su media 125.6 y su máximo 162. Al considerar la proporción de no respondentes por estrato se puede apreciar que ocurre lo mismo. En este caso se puede observar que la tasa de no respuesta varía según el estrato considerado, siendo el primero (Montevideo bajo) el que cuenta con la mayor tasa, del 56%, y el doceavo el que cuenta con la menor, del 46%. Estas diferencias se ven reflejadas también al considerar la tasa de no respondentes por departamento.
+La tasa de no respuesta no ponderada es del 47,4% mientras que la ponderada es del 47,6%. El hecho de que ambas tasas de no respuesta sean similares puede deberse a que los pesos $w_0$ no son muy disímiles entre sí, siendo su mínimo 104,4; su media 125.6 y su máximo 162. Al considerar la proporción de no respondentes por estrato se puede apreciar que ocurre lo mismo. En este caso se puede observar que la tasa de no respuesta varía según el estrato considerado, siendo el primero (Montevideo bajo) el que cuenta con la mayor tasa, del 56%, y el doceavo el que cuenta con la menor, del 46%. Estas diferencias se ven reflejadas también al considerar la tasa de no respondentes por departamento. Resultan bastante diferentes las tasas de no respuesta considerando los distintos segmentos de edad, el de 0 a 14 años y el de 60 en adelante son los que presentan menor tasa de no respuesta, siendo las de los primeros 50% (no ponderada) y 49% (ponderada) y 50% (no ponderada y ponderada) la de los segundos. 
+
+# Parte 2
+
+## Ajuste por no respuesta por medio de post-estratos de no respuesta
+
+```{r}
+
+
+ggplot(muestra, aes(x=ingreso, y=edad, fill=edad))+ geom_boxplot()
+ggplot(muestra, aes(x=ingreso, y=sexo, fill=sexo))+ geom_boxplot()
+
+# Parecería que la edad permitiría explicar mejor el ingreso
+```
+
+```{r}
+#Conteos poblacionales de las variables para post-estratificar
+pop_count_edad <- muestra %>% count(edad) %>% rename(Freq=n)
+
+
+#post-estratificación, se usa únicamente la edad como variable de post-estratificación
+post <- postStratify(
+  design = design1, 
+  strata = ~edad, 
+  population=pop_count_edad
+  ) 
+```
+
+Bajo el enfoque de no respuesta considerado, el MAR (*Missing at Random*), se trabaja bajo el supuesto de que la no respuesta no depende de las variables de interés, pero sí es completamente explicada por variables auxiliares. Lo que se puede hacer en este caso es construir un modelo de respuesta basado en la información auxiliar (Ferreira y Zoppolo, ). En nuestro caso, en un principio consideramos que la no respuesta es explicada por la edad, tomando en cuenta las diferencias en la tasa de no respuesta por segmento. 
+
+
+
+
+```{r}
+# Efecto diseño de Kish
+deffK(weights(post))
+```
+
+
+
+
 
