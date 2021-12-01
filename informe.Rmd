@@ -209,22 +209,27 @@ estimadores por usar ponderadores distintos respecto al uso de el mismo ponderad
 caso y se define como uno más la varianza relativa de los ponderadores,
 
 
-
 Una forma de medir la variabilidad global de los ponderadores (que en caso de ser alta puede resultar en una variabilidad alta de los estimadores) es el efecto diseño de Kish, que representa el incremento en la variabilidad de los estimadores causada por usar ponderadores distintos para las unidades de la muestra con respecto a usar el mismo ponderador. Su fórmula es:
 
 $$deff_w = 1 + \frac{1}{n} \frac{\sum_s(w_k - \bar{w})^2}{\bar{w}^2}$$
 
 donde $\bar{w} = n^{-1} \sum_sw_k$ es el promedio de los ponderadores.
 
-La práctica usual es calcularlo luego de realizar cada ajuste a los estimadores (no respuesta, calibración, en el caso de este trabajo). Se usa la regla empírica que $deff_w > 1,5$ indican que hay valores extremos de los ponderadores que repercuten en los finales
+La práctica usual es calcularlo luego de realizar cada ajuste a los estimadores (no respuesta, calibración, en el caso de este trabajo). Se usa la regla empírica que $deff_w > 1,5$ indican que hay valores extremos de los ponderadores que repercuten en los finales.
 
 
 ```{r}
 # Efecto diseño de Kish
 deffK(muestra$w_nr_post)
+
+# Ver si solo se calcula con los respondentes
+deffK(muestra %>% 
+        filter(R ==1) %>%
+        select(w_nr_post) %>% 
+        pull())
 ```
 
-En nuestro caso, luego de realizar el ajuste por no respuesta $deff_w \simeq 1,033 < 1,5$, por lo que parecería que no resultó en valores extremos de los ponderadores. 
+En nuestro caso, luego de realizar el ajuste por no respuesta $deff_w \simeq 1,033 < 1,5$, por lo que parecería que no resultó en valores extremos de los ponderadores que repercutirían en la variabilidad de los estimadores. 
 
 
 
@@ -253,8 +258,6 @@ design2 %>%
 
 En cuanto a la estimación de la proporción de personas pobres, ahora aumenta de 0,0811 a 0,0837. La estimación del error estándar aumenta a 0,00389, mientras que el coeficiente de vairación no presenta cambio al corregir por no respuesta. El efecto diseño presenta un aumento, de 2,84 a 2,92. 
 
-
-
 ```{r}
 ## Ingreso promedio
 design2 %>% 
@@ -271,14 +274,163 @@ El ajuste por propensiones simples consiste en:
 $$w_i^{nr} = \frac{1}{\pi_i \times \hat{\phi}_i}$$
 donde $\hat{\phi}_i$ es la propensión a responder de la unidad $i$, la cual se estima a partir de un modelo o un algoritmo, haciendo uso de variables auxiliares conocidas tanto para respondentes como no respondentes.
 
-El algoritmo elegido es *Random Forest*, un método no paramétrico mediante el cual se hace uso de múltiples árboles de decisión para obtener una estimación.
+El algoritmo elegido es *Random Forest* (RF), un método no paramétrico mediante el cual se hace uso de múltiples árboles de decisión para obtener una estimación de la propensión a responder de cada individuo a partir de alguna medida de resumen de la clasificación que hacen los árboles (por ejemplo el modo o la media). 
 
 
 ```{r}
+# modelamos la no respuesta con random forest
+modelo_rf <-  rand_forest(trees = 100) %>% 
+  set_engine("ranger") %>% 
+  set_mode("classification") %>% 
+  fit(as.factor(R) ~ estrato + sexo + edad + dpto, data = muestra)
+```
+
+```{r}
+# Para ver que tan bien predice el algoritmo
+pred_rf <- tibble(predict(modelo_rf, muestra, type= "prob"), predict(modelo_rf, muestra) )
+
+conf_mat(data = bind_cols(select(muestra, R), select(pred_rf, .pred_class)), 
+         truth = R, 
+         estimate = .pred_class)
+```
+
+El modelo predice correctamente al 57% de los no respondentes y al 67% de los respondentes.
+
+```{r}
+# Agregamos las propensiones estimadas con random forest a la muestra
+pred_rf <-  pred_rf %>% rename(prop_rf = .pred_1)
+
+muestra <-  muestra %>% bind_cols(select(pred_rf, prop_rf))
+
+# Calculamos los ponderadores ajustados por no respuesta usando las propensiones de arriba
+muestra <-  muestra %>% 
+  mutate(w_nr_rf = w0/prop_rf)
+```
+
+```{r}
+# Calculamos el efecto diseño de Kish
+deffK(muestra$w_nr_rf)
+
+### VER SI SE CALCULA SOLO CON RESPONDENTES
+deffK(muestra %>% 
+        filter(R ==1) %>%
+        select(w_nr_rf) %>% 
+        pull())
+
+```
+
+Una vez ajustados los ponderadores por no respuesta por propensiones simples empleando las estimaciones obtenidas mediante *Random Forest*, el efecto diseño de Kish es de 1,074, que si bien es menor a 1,5, es mayor al valor obtenido luego del ajuste anterior.
+```{r}
+# Estimaciones empleando ajuste por no respuesta mediante propensiones simples estimadas por random forest
+
+design3 <- muestra %>%
+  filter(R==1) %>% 
+  as_survey_design(ids = id_hogar, strata = estrato, weights = w_nr_rf)
+
+## Tasa de desempleo
+design3 %>% 
+  filter(activo == 1) %>% 
+  group_by(desocupado) %>% 
+  summarise(tasa_desempleo = survey_mean(deff = TRUE, vartype = c('se','cv')))
+```
+
+La estimación de la tasa de desempleo al ajustar los ponderadores mediante propensiones simples estimadas por RF es del 8,2% aproximadamente, disminuyendo en comparación a la estimación realizada con los ponderadores ajustados mediante clases de no respuesta. Se destaca además un aumento del efecto diseño, que ahora es de 1,12 en comparación al de 1,09 del ajuste anterior.
+
+
+```{r}
+## Proporción de personas pobres
+design3 %>% 
+  group_by(pobreza) %>% 
+  summarise(prop_pobres = survey_mean(deff = TRUE, vartype = c('se','cv')))
+```
+
+Considerando ambos ajuste por no respuesta realizados hasta el momento, la estimación de la proporción de personas pobres resulta muy similar, siendo la primera realizada 0,0837 y 0,0834 con el último ajuste considerado. En este caso el efecto diseño cuando se ajusta con propensiones simples y estimadas por RF se eleva a 2,99, en comparación al valor del ajuste anterior; 2,92.
+
+```{r}
+## Ingreso promedio
+design3 %>% 
+  summarise(ingreso_prom = survey_mean(ingreso, deff = TRUE, vartype = c('se','cv')))
+```
+
+La estimación puntual del ingreso promedio considerando el último ajuste realizado es 21491, en comparación a 21686 de la estimación bajo el ajuste por clases de no respuesta. El efecto diseño sigue siendo menor a 1, pero aumenta a 0,949 en el ajuste mediante propensiones simples estimadas por RF. Por otro lado, el desvío estimado disminuye en el caso del último ajuste, siendo de 236,5 en comparación a 238,2.
+
+## Ajuste por no respuesta creando clases de no respuesta, utilizando las propensiones estimadas en el punto anterior.
+
+Este tipo de ajuste tiene la intención de hacer más estables las estimaciones finales de la respuesta. Para realizarlo se forman grupos de unidades de la muestra en base a las propensiones estimadas, en nuestro caso creamos clases en base a los quintiles de las propensiones. Una vez se cuenta con los grupos, se resumen los valores de las propensiones dentro de los mismo para contar con un valor representante dentro de la clase, con la mediana o la media (se opta por esta última). 
+
+```{r}
+quintiles_phi <- quantile(muestra$prop_rf, c(0.2, 0.4, 0.6 , 0.8, 1))
+
+muestra <- muestra %>% 
+  mutate(
+    clase_nr_rf = case_when(
+      prop_rf <=  quintiles_phi[1] ~ 1,
+      prop_rf > quintiles_phi[1] & prop_rf <= quintiles_phi[2] ~ 2,
+      prop_rf > quintiles_phi[2] & prop_rf <= quintiles_phi[3] ~ 3,
+      prop_rf > quintiles_phi[3] & prop_rf <= quintiles_phi[4] ~ 4,
+      prop_rf > quintiles_phi[4] ~ 5,
+    ) %>%  as.factor()
+  )
+
+post_estratos_rf <- muestra %>% 
+  group_by(clase_nr_rf) %>% 
+  summarise(prop_clase_rf = mean(prop_rf))
+  
+muestra <- muestra %>% 
+  mutate(
+    prop_clase_rf =  case_when(
+      clase_nr_rf == 1 ~ post_estratos_rf$prop_clase_rf[1],
+      clase_nr_rf == 2 ~ post_estratos_rf$prop_clase_rf[2],
+      clase_nr_rf == 3 ~ post_estratos_rf$prop_clase_rf[3],
+      clase_nr_rf == 4 ~ post_estratos_rf$prop_clase_rf[4],
+      clase_nr_rf == 5 ~ post_estratos_rf$prop_clase_rf[5]
+    ),
+  w_post_nr_rf = w0/prop_clase_rf  
+  )
 
 ```
 
 
+```{r}
+# Efecto diseño de Kish
+deffK(muestra %>% 
+        filter(R ==1) %>%
+        select(w_post_nr_rf) %>% 
+        pull())
 
+```
 
+El efecto diseño en este caso es de 1,067, con lo que al ser menor a 1,5 esto indicaría que el ajuste realizado parece no haber generado valores extremos de los ponderadores. Este valor es menor al obtenido en el ajuste por propensiones simples, pero mayor que el del ajuste por clases de no respuesta.
 
+```{r}
+# Estimaciones empleando clases de no respuesta en base a propensiones estimadas por RF
+
+design4 <- muestra %>%
+  filter(R==1) %>% 
+  as_survey_design(ids = id_hogar, strata = estrato, weights = w_post_nr_rf)
+
+## Tasa de desempleo
+design4 %>% 
+  filter(activo == 1) %>% 
+  group_by(desocupado) %>% 
+  summarise(tasa_desempleo = survey_mean(deff = TRUE, vartype = c('se','cv')))
+```
+
+Luego de realizar el ajuste se aprecia que la estimación puntual de la tasa de desempleo es la menor de las tres estimadas, siendo del 8,12%. El efecto diseño es 1,1; el valor se ubican entre los dos obtenidos con los otros ajustes. El coeficiente de variación se encuentra entre los otros dos estimados para esta variable de interés.
+
+```{r}
+## Proporción de personas pobres
+design4 %>% 
+  group_by(pobreza) %>% 
+  summarise(prop_pobres = survey_mean(deff = TRUE, vartype = c('se','cv')))
+```
+
+La proporción de personas pobres también es la menor entre las obtenidas luego de los distintos ajustes. El efecto diseño y coeficiente de variación en este caso se encuentra entre los de los estimados luego de los otros ajustes. 
+
+```{r}
+## Ingreso promedio
+design4 %>% 
+  summarise(ingreso_prom = survey_mean(ingreso, deff = TRUE, vartype = c('se','cv')))
+```
+
+La estimación puntual del ingreso en este caso está entre las otras dos anteriores, lo mismo que el efecto diseño y el coeficiente de variación.
