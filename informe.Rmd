@@ -34,7 +34,7 @@ library(srvyr)
 library(survey)
 library(PracTools)
 library(readxl)
-
+library(tidymodels)
 ```
 
 # Parte 1
@@ -75,8 +75,6 @@ design1 %>%
   filter(activo == 1) %>% 
   group_by(desocupado) %>% 
   summarise(tasa_desempleo = survey_mean(deff = TRUE, vartype = c('se','cv')))
-
-
 ```
 
 
@@ -166,36 +164,118 @@ La tasa de no respuesta no ponderada es del 47,4% mientras que la ponderada es d
 
 ## Ajuste por no respuesta por medio de post-estratos de no respuesta
 
+Bajo el enfoque de no respuesta considerado, el MAR (*Missing at Random*), se trabaja bajo el supuesto de que la no respuesta no depende de las variables de interés, pero sí es completamente explicada por variables auxiliares. Lo que se puede hacer en este caso es construir un modelo de respuesta basado en la información auxiliar (Ferreira y Zoppolo, ). 
+
+Siguiendo este enfoque, una manera de realizar el ajuste es mediante clases de no respuesta, creadas en base a información de las unidades presente en el marco muestral. Se crean $g$ clases y se asume que todas las unidades dentro de cada una de ellas tiene la misma probabilidad de responder, cuya fórmula es:
+
+$$\hat{\phi}_{i,g} = TR_w = \frac{\sum_{i \in R}w_i}{\sum_{i \in s}w_i}, \,\,\,\, i \in g$$
+Luego, los ponderadores por no respuesta son: 
+
+$$w_i^{nr} = \frac{1}{\pi_i \times \hat{\phi}_{i,g}}$$
+($\pi_i$ son las probabilidad de inclusión originales)
+
+En nuestro caso, la información que podríamos emplear que se encuentra en el marco son los estratos. 
+
 ```{r}
+ggplot(muestra, aes(x=ingreso, y=estrato))+ geom_boxplot()
 
-
-ggplot(muestra, aes(x=ingreso, y=edad, fill=edad))+ geom_boxplot()
-ggplot(muestra, aes(x=ingreso, y=sexo, fill=sexo))+ geom_boxplot()
-
-# Parecería que la edad permitiría explicar mejor el ingreso
+# Parecería que el estrato permitiría explicar mejor el ingreso
 ```
 
 ```{r}
-#Conteos poblacionales de las variables para post-estratificar
-pop_count_edad <- muestra %>% count(edad) %>% rename(Freq=n)
+ajuste_nr_estrato <-  muestra %>% 
+  group_by(estrato) %>% 
+  summarise(
+    tr = mean(R), 
+    tr_w = weighted.mean(R, w0))
 
 
-#post-estratificación, se usa únicamente la edad como variable de post-estratificación
-post <- postStratify(
-  design = design1, 
-  strata = ~edad, 
-  population=pop_count_edad
-  ) 
+muestra <- left_join(muestra , select(ajuste_nr_estrato, estrato, tr_w)) %>%
+                mutate(w_nr_post = w0/tr_w)  
 ```
 
-Bajo el enfoque de no respuesta considerado, el MAR (*Missing at Random*), se trabaja bajo el supuesto de que la no respuesta no depende de las variables de interés, pero sí es completamente explicada por variables auxiliares. Lo que se puede hacer en este caso es construir un modelo de respuesta basado en la información auxiliar (Ferreira y Zoppolo, ). En nuestro caso, en un principio consideramos que la no respuesta es explicada por la edad, tomando en cuenta las diferencias en la tasa de no respuesta por segmento. 
+
+```{r}
+ggplot(muestra) +
+ geom_point(aes(w0, w_nr_post, color = estrato))
+
+# los ponderadores originales se ven bastante alterados
+```
 
 
+Una medida global frecuentemente utilizada conocida como efecto diseño debido a la
+ponderación o efecto de Kish (Kish, 1965, 1992) y representa el incremento en la variabilidad de los
+estimadores por usar ponderadores distintos respecto al uso de el mismo ponderador para todos los
+caso y se define como uno más la varianza relativa de los ponderadores,
+
+
+
+Una forma de medir la variabilidad global de los ponderadores (que en caso de ser alta puede resultar en una variabilidad alta de los estimadores) es el efecto diseño de Kish, que representa el incremento en la variabilidad de los estimadores causada por usar ponderadores distintos para las unidades de la muestra con respecto a usar el mismo ponderador. Su fórmula es:
+
+$$deff_w = 1 + \frac{1}{n} \frac{\sum_s(w_k - \bar{w})^2}{\bar{w}^2}$$
+
+donde $\bar{w} = n^{-1} \sum_sw_k$ es el promedio de los ponderadores.
+
+La práctica usual es calcularlo luego de realizar cada ajuste a los estimadores (no respuesta, calibración, en el caso de este trabajo). Se usa la regla empírica que $deff_w > 1,5$ indican que hay valores extremos de los ponderadores que repercuten en los finales
 
 
 ```{r}
 # Efecto diseño de Kish
-deffK(weights(post))
+deffK(muestra$w_nr_post)
+```
+
+En nuestro caso, luego de realizar el ajuste por no respuesta $deff_w \simeq 1,033 < 1,5$, por lo que parecería que no resultó en valores extremos de los ponderadores. 
+
+
+
+```{r}
+#estimaciones empleando ajuste por no respuesta mediante clases de no respuesta
+
+design2 <- muestra %>%
+  filter(R==1) %>% 
+  as_survey_design(ids = id_hogar, strata = estrato, weights = w_nr_post)
+
+# Tasa de desempleo
+design2 %>% 
+  filter(activo == 1) %>% 
+  group_by(desocupado) %>% 
+  summarise(tasa_desempleo = survey_mean(deff = TRUE, vartype = c('se','cv')))
+```
+
+Una vez se realiza el ajuste por no respuesta mediante clases de no respuesta, la estimación puntual de la tasa de desempleo cambia, pasa de 8,24% a 8,31%. El desvío disminuye, pasando de 0,0033 a 0,00336; lo mismo ocurre con el coeficiente de variación, pasando de 0,04 a 0,0404. El efecto diseño pasa de 1,07 a 1,09.
+
+```{r}
+## Proporción de personas pobres
+design2 %>% 
+  group_by(pobreza) %>% 
+  summarise(prop_pobres = survey_mean(deff = TRUE, vartype = c('se','cv')))
+```
+
+En cuanto a la estimación de la proporción de personas pobres, ahora aumenta de 0,0811 a 0,0837. La estimación del error estándar aumenta a 0,00389, mientras que el coeficiente de vairación no presenta cambio al corregir por no respuesta. El efecto diseño presenta un aumento, de 2,84 a 2,92. 
+
+
+
+```{r}
+## Ingreso promedio
+design2 %>% 
+  summarise(ingreso_prom = survey_mean(ingreso, deff = TRUE, vartype = c('se','cv')))
+```
+
+La estimación puntual del ingreso promedio disminuye, de 21799 a 21686, el error estándar presenta una disminución en una unidad. El coeficiente de variación con y sin ajuste son iguales hasta 4 lugares después de la coma, mientras que el efecto diseño presenta una leve disminución; pasa de 0,9355 a 0,9314.
+
+
+## Estimación de propensiones simples de responder utilizando el algoritmo random forest.
+
+El ajuste por propensiones simples consiste en:
+
+$$w_i^{nr} = \frac{1}{\pi_i \times \hat{\phi}_i}$$
+donde $\hat{\phi}_i$ es la propensión a responder de la unidad $i$, la cual se estima a partir de un modelo o un algoritmo, haciendo uso de variables auxiliares conocidas tanto para respondentes como no respondentes.
+
+El algoritmo elegido es *Random Forest*, un método no paramétrico mediante el cual se hace uso de múltiples árboles de decisión para obtener una estimación.
+
+
+```{r}
+
 ```
 
 
