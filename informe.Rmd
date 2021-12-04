@@ -454,13 +454,39 @@ El ajuste por no respuesta que computa el deff mas pequeño son los ponderadores
 Previo a la calibración post estratificada imcompleta (raking), calculamos el verdadero conteo poblacional de las tres variables poblacionales para luego contrastar con el tamaño estimado.
 
 ```{r}
-pop_count_edad = muestra %>% count(edad) %>% rename(Freq=n)
-pop_count_edad
-pop_count_sexo = muestra %>% count(sexo) %>% rename(Freq=n)
-pop_count_sexo #(que es sexo = 1 y que es sexo = 2 ?)
-pop_count_dpto = muestra %>% count(dpto) %>% rename(Freq=n)
-pop_count_dpto
+library(readxl)
+total_dpto <- read_excel("datos/proyecciones de población por dpto.xlsx")
 ```
+
+```{r}
+sexo_y_edades_simples <- read_excel("datos/proyecciones de población por sexo y edades simples.xlsx")
+```
+
+```{r}
+sexo_y_edades_simples <- sexo_y_edades_simples %>% 
+  mutate(edad = cut(edad, breaks=c(0, 14,20,25,30,40,50,60,Inf), right = FALSE))
+```
+
+```{r}
+sexo_y_edades_simples <- sexo_y_edades_simples %>%  pivot_longer(names_to="sexo", cols=c("hombres","mujeres"),values_to = "Freq")
+
+sexo_y_edades_simples$sexo <- ifelse(sexo_y_edades_simples$sexo=="hombres",1,2)
+
+sexo_y_edades_simples$sexo <- as.factor(sexo_y_edades_simples$sexo)
+pop_count_sexo <- sexo_y_edades_simples %>% group_by(sexo) %>% summarise(Freq=sum(Freq))
+pop_count_sexo
+
+pop_count_edad = sexo_y_edades_simples %>% group_by(edad) %>%  summarise(Freq=sum(Freq))
+pop_count_edad
+
+pop_count_dpto = total_dpto 
+pop_count_dpto$dpto <- as.factor(pop_count_dpto$dpto)
+pop_count_dpto <-pop_count_dpto %>%  rename(Freq=personas)
+pop_count_dpto$Freq <- as.integer(pop_count_dpto$Freq)
+pop_count_dpto
+
+```
+
 
 Visualización de los post - estratos para ver si sirve para explicar la variable de interés.
 
@@ -483,43 +509,28 @@ ggplot(muestra, aes(x=ingreso, y=sexo, fill=sexo))+ geom_boxplot()
 En este caso, el sexo si es útil para explicar la ingreso de la persona. Si la persona es hombre tiene valor 1 y su ingreso es mayor a que si la persona fuera mujer.
  
 ### Muestra 
-Seleccionamos una muestra de tamaño $n=500$ bajo un muestreo aleatorio simple (SI) 
 
-```{r}
-set.seed(1234)
-N=nrow(muestra)
-n=500 
-incluidas=sample(1:N,
-                 size=n,
-                 replace=FALSE)
-
-saco_muestra = muestra %>% slice(incluidas)
-```
-
-Para la muestra seleccionada, usaremos como ponderadores los ajustados por clases de no respuesta, además calculamos la tasa de muestreo $f=n/N$ para luego computar los $SE$ de las estimaciones
-
-```{r}
-saco_muestra = saco_muestra %>% mutate (f=n/N)
-```
+Para la muestra seleccionada, usaremos como ponderadores los ajustados por clases de no respuesta.
 
 ### Diseño muestral 
 
 ```{r}
 (diseño=svydesign(ids=~0,       #NO CLUSTER
              strata=NULL, #NO ESTRATOS
-             fpc=~f,      #TASA DE MUESTREO
              weights=~w_nr_rf,  #PONDERADORES BASE
-             data=saco_muestra))
+             data=muestra))
 ```
 
 ### Post estratificación incompleta raking con las variables auxiliares edad, sexo y departamento de la forma tradicional
 
 ```{r}
+
 rake1=rake(design=diseño, 
            sample.margins=list(~sexo,~edad,~dpto), 
            population.margins=list(pop_count_sexo,
                                    pop_count_edad,
                                    pop_count_dpto))
+
 ```
 
 ```{r}
@@ -535,15 +546,15 @@ svytotal(~dpto,rake1)
 ```
 
 ```{r}
-saco_muestra = saco_muestra %>% mutate(g_rake1=weights(rake1)/w_nr_rf)
-ggplot(saco_muestra, aes(x=g_rake1)) +geom_histogram(fill='blue',color='white',alpha=0.3)+theme_bw()
+muestra = muestra %>% mutate(g_rake1=weights(rake1)/w_nr_rf)
+ggplot(muestra, aes(x=g_rake1)) +geom_histogram(fill='blue',color='white',alpha=0.3)+theme_bw()
 ```
 
 
 ### Post estratificación incompleta raking con las variables auxiliares edad, sexo y departamento usando la función calibrate
 
 ```{r}
-counts=c(nrow(muestra),
+counts=c(sum(pop_count_sexo$Freq),
          pop_count_dpto$Freq[-1],
          pop_count_sexo$Freq[-1],
          pop_count_edad$Freq[-1])
@@ -569,7 +580,7 @@ svytotal(~dpto,r2)
 ```
 
 ```{r}
-saco_muestra = saco_muestra %>% mutate(g_r2=weights(r2)/w_nr_rf)
-ggplot(saco_muestra, aes(x=g_r2)) +geom_histogram(fill='blue',color='white',alpha=0.3)+theme_bw()
+muestra = muestra %>% mutate(g_r2=weights(r2)/w_nr_rf)
+ggplot(muestra, aes(x=g_r2)) +geom_histogram(fill='blue',color='white',alpha=0.3)+theme_bw()
 ```
 

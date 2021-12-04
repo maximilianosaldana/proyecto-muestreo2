@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.23 (TeX Live 2021/W32TeX) (preloaded format=pdflatex 2021.12.3)  4 DEC 2021 15:24
+This is pdfTeX, Version 3.141592653-2.6-1.40.23 (TeX Live 2021/W32TeX) (preloaded format=pdflatex 2021.12.3)  4 DEC 2021 19:30
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -694,51 +694,52 @@ Package hyperref Warning: Difference (2) between bookmark levels is greater
 (hyperref)                than one, level fixed on input line 782.
 
 [14]
-<informe_files/figure-latex/unnamed-chunk-28-1.pdf, id=148, 469.755pt x 325.215
+<informe_files/figure-latex/unnamed-chunk-31-1.pdf, id=148, 469.755pt x 325.215
 pt>
-File: informe_files/figure-latex/unnamed-chunk-28-1.pdf Graphic file (type pdf)
+File: informe_files/figure-latex/unnamed-chunk-31-1.pdf Graphic file (type pdf)
 
-<use informe_files/figure-latex/unnamed-chunk-28-1.pdf>
-Package pdftex.def Info: informe_files/figure-latex/unnamed-chunk-28-1.pdf  use
-d on input line 883.
+<use informe_files/figure-latex/unnamed-chunk-31-1.pdf>
+Package pdftex.def Info: informe_files/figure-latex/unnamed-chunk-31-1.pdf  use
+d on input line 911.
 (pdftex.def)             Requested size: 375.80452pt x 260.17235pt.
-[15 <./informe_files/figure-latex/unnamed-chunk-28-1.pdf>]
-<informe_files/figure-latex/unnamed-chunk-29-1.pdf, id=158, 469.755pt x 325.215
+[15]
+<informe_files/figure-latex/unnamed-chunk-32-1.pdf, id=153, 469.755pt x 325.215
 pt>
-File: informe_files/figure-latex/unnamed-chunk-29-1.pdf Graphic file (type pdf)
+File: informe_files/figure-latex/unnamed-chunk-32-1.pdf Graphic file (type pdf)
 
-<use informe_files/figure-latex/unnamed-chunk-29-1.pdf>
-Package pdftex.def Info: informe_files/figure-latex/unnamed-chunk-29-1.pdf  use
-d on input line 893.
+<use informe_files/figure-latex/unnamed-chunk-32-1.pdf>
+Package pdftex.def Info: informe_files/figure-latex/unnamed-chunk-32-1.pdf  use
+d on input line 921.
 (pdftex.def)             Requested size: 375.80452pt x 260.17235pt.
-<informe_files/figure-latex/unnamed-chunk-30-1.pdf, id=159, 469.755pt x 325.215
+[16 <./informe_files/figure-latex/unnamed-chunk-31-1.pdf> <./informe_files/figu
+re-latex/unnamed-chunk-32-1.pdf>]
+<informe_files/figure-latex/unnamed-chunk-33-1.pdf, id=169, 469.755pt x 325.215
 pt>
-File: informe_files/figure-latex/unnamed-chunk-30-1.pdf Graphic file (type pdf)
+File: informe_files/figure-latex/unnamed-chunk-33-1.pdf Graphic file (type pdf)
 
-<use informe_files/figure-latex/unnamed-chunk-30-1.pdf>
-Package pdftex.def Info: informe_files/figure-latex/unnamed-chunk-30-1.pdf  use
-d on input line 903.
+<use informe_files/figure-latex/unnamed-chunk-33-1.pdf>
+Package pdftex.def Info: informe_files/figure-latex/unnamed-chunk-33-1.pdf  use
+d on input line 931.
 (pdftex.def)             Requested size: 375.80452pt x 260.17235pt.
-[16 <./informe_files/figure-latex/unnamed-chunk-29-1.pdf> <./informe_files/figu
-re-latex/unnamed-chunk-30-1.pdf>] [17]
-<informe_files/figure-latex/unnamed-chunk-38-1.pdf, id=182, 469.755pt x 325.215
+[17 <./informe_files/figure-latex/unnamed-chunk-33-1.pdf>]
+<informe_files/figure-latex/unnamed-chunk-39-1.pdf, id=182, 469.755pt x 325.215
 pt>
-File: informe_files/figure-latex/unnamed-chunk-38-1.pdf Graphic file (type pdf)
+File: informe_files/figure-latex/unnamed-chunk-39-1.pdf Graphic file (type pdf)
 
-<use informe_files/figure-latex/unnamed-chunk-38-1.pdf>
-Package pdftex.def Info: informe_files/figure-latex/unnamed-chunk-38-1.pdf  use
-d on input line 1035.
+<use informe_files/figure-latex/unnamed-chunk-39-1.pdf>
+Package pdftex.def Info: informe_files/figure-latex/unnamed-chunk-39-1.pdf  use
+d on input line 1040.
 (pdftex.def)             Requested size: 375.80452pt x 260.17235pt.
-[18] [19 <./informe_files/figure-latex/unnamed-chunk-38-1.pdf>]
-<informe_files/figure-latex/unnamed-chunk-44-1.pdf, id=201, 469.755pt x 325.215
+[18] [19 <./informe_files/figure-latex/unnamed-chunk-39-1.pdf>]
+<informe_files/figure-latex/unnamed-chunk-45-1.pdf, id=201, 469.755pt x 325.215
 pt>
-File: informe_files/figure-latex/unnamed-chunk-44-1.pdf Graphic file (type pdf)
+File: informe_files/figure-latex/unnamed-chunk-45-1.pdf Graphic file (type pdf)
 
-<use informe_files/figure-latex/unnamed-chunk-44-1.pdf>
-Package pdftex.def Info: informe_files/figure-latex/unnamed-chunk-44-1.pdf  use
-d on input line 1128.
+<use informe_files/figure-latex/unnamed-chunk-45-1.pdf>
+Package pdftex.def Info: informe_files/figure-latex/unnamed-chunk-45-1.pdf  use
+d on input line 1133.
 (pdftex.def)             Requested size: 375.80452pt x 260.17235pt.
-[20 <./informe_files/figure-latex/unnamed-chunk-44-1.pdf>] (./informe.aux
+[20 <./informe_files/figure-latex/unnamed-chunk-45-1.pdf>] (./informe.aux
 LaTeX Info: Redefining \. on input line 25.
 LaTeX Info: Redefining \% on input line 25.
 )
@@ -776,7 +777,7 @@ sers/fiore/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtko10.pfb
 ><c:/Users/fiore/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtt1
 0.pfb><c:/Users/fiore/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/lm/
 lmtti10.pfb>
-Output written on informe.pdf (20 pages, 515864 bytes).
+Output written on informe.pdf (20 pages, 514273 bytes).
 PDF statistics:
  301 PDF objects out of 1000 (max. 8388607)
  230 compressed objects within 3 object streams
