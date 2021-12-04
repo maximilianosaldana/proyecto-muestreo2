@@ -25,8 +25,6 @@ knitr::opts_chunk$set(
   )
 ```
 
-
-
 ```{r librerias, include=FALSE}
 
 library(tidyverse)
@@ -434,3 +432,144 @@ design4 %>%
 ```
 
 La estimación puntual del ingreso en este caso está entre las otras dos anteriores, lo mismo que el efecto diseño y el coeficiente de variación.
+
+\newpage
+
+# Parte 3
+### Calibración de los ponderadores
+
+Para seleccionar cuál de los ponderadores ajustados por no respuesta utilizaremos para la calibración, tomamos como criterio seleccionar el que compute el deff mas chico.
+
+*(Ver si los deff estan bien calculados o se calculan con los respondentes)*
+
+```{r}
+data<- data.frame(deffK(muestra$w_nr_post), deffK(muestra$w_nr_rf), deffK(muestra$w_post_nr_rf))
+data
+```
+
+El ajuste por no respuesta que computa el deff mas pequeño son los ponderadores ajustados por clases de no respuesta.
+
+### Conteos poblacionales de las tres variables auxiliares
+
+Previo a la calibración post estratificada imcompleta (raking), calculamos el verdadero conteo poblacional de las tres variables poblacionales para luego contrastar con el tamaño estimado.
+
+```{r}
+pop_count_edad = muestra %>% count(edad) %>% rename(Freq=n)
+pop_count_edad
+pop_count_sexo = muestra %>% count(sexo) %>% rename(Freq=n)
+pop_count_sexo #(que es sexo = 1 y que es sexo = 2 ?)
+pop_count_dpto = muestra %>% count(dpto) %>% rename(Freq=n)
+pop_count_dpto
+```
+
+Visualización de los post - estratos para ver si sirve para explicar la variable de interés.
+
+```{r}
+ggplot(muestra, aes(x=ingreso, y=edad, fill=edad))+ geom_boxplot()
+```
+
+Al hacer la visualización de los datos con la variable edad, vemos que ésta no explica la variabilidad de los datos, se podía decir que sí lo hace en el tramo de edad de 14 a 30 años, pero entre 30 y 60 años no logra captar la variabilidad de los datos, ya que da a entender que todas las personas entre las edades comprendidas entre 30 y 60 años tienen igual ingreso. Por lo tanto, la variable auxilar edad no es útil para mejorar las estimaciones. 
+
+```{r}
+ggplot(muestra, aes(x=ingreso, y=dpto, fill=dpto))+ geom_boxplot()
+```
+
+En la visualización de la variable departamento podemos notar que tampoco capta la variabilidad de los datos, el que mayor capta la variabilidad de los datos es el departamento de Montevideo. 
+
+```{r}
+ggplot(muestra, aes(x=ingreso, y=sexo, fill=sexo))+ geom_boxplot()
+```
+
+En este caso, el sexo si es útil para explicar la ingreso de la persona. Si la persona es hombre tiene valor 1 y su ingreso es mayor a que si la persona fuera mujer.
+ 
+### Muestra 
+Seleccionamos una muestra de tamaño $n=500$ bajo un muestreo aleatorio simple (SI) 
+
+```{r}
+set.seed(1234)
+N=nrow(muestra)
+n=500 
+incluidas=sample(1:N,
+                 size=n,
+                 replace=FALSE)
+
+saco_muestra = muestra %>% slice(incluidas)
+```
+
+Para la muestra seleccionada, usaremos como ponderadores los ajustados por clases de no respuesta, además calculamos la tasa de muestreo $f=n/N$ para luego computar los $SE$ de las estimaciones
+
+```{r}
+saco_muestra = saco_muestra %>% mutate (f=n/N)
+```
+
+### Diseño muestral 
+
+```{r}
+(diseño=svydesign(ids=~0,       #NO CLUSTER
+             strata=NULL, #NO ESTRATOS
+             fpc=~f,      #TASA DE MUESTREO
+             weights=~w_nr_rf,  #PONDERADORES BASE
+             data=saco_muestra))
+```
+
+### Post estratificación incompleta raking con las variables auxiliares edad, sexo y departamento de la forma tradicional
+
+```{r}
+rake1=rake(design=diseño, 
+           sample.margins=list(~sexo,~edad,~dpto), 
+           population.margins=list(pop_count_sexo,
+                                   pop_count_edad,
+                                   pop_count_dpto))
+```
+
+```{r}
+svytotal(~sexo,rake1)
+```
+
+```{r}
+svytotal(~edad,rake1)
+```
+
+```{r}
+svytotal(~dpto,rake1)
+```
+
+```{r}
+saco_muestra = saco_muestra %>% mutate(g_rake1=weights(rake1)/w_nr_rf)
+ggplot(saco_muestra, aes(x=g_rake1)) +geom_histogram(fill='blue',color='white',alpha=0.3)+theme_bw()
+```
+
+
+### Post estratificación incompleta raking con las variables auxiliares edad, sexo y departamento usando la función calibrate
+
+```{r}
+counts=c(nrow(muestra),
+         pop_count_dpto$Freq[-1],
+         pop_count_sexo$Freq[-1],
+         pop_count_edad$Freq[-1])
+```
+
+```{r}
+r2=calibrate(design=diseño, 
+            formula=~dpto+sexo+edad,
+            population=counts,
+            calfun="raking")
+```
+
+```{r}
+svytotal(~sexo,r2)
+```
+
+```{r}
+svytotal(~edad,r2)
+```
+
+```{r}
+svytotal(~dpto,r2)
+```
+
+```{r}
+saco_muestra = saco_muestra %>% mutate(g_r2=weights(r2)/w_nr_rf)
+ggplot(saco_muestra, aes(x=g_r2)) +geom_histogram(fill='blue',color='white',alpha=0.3)+theme_bw()
+```
+
