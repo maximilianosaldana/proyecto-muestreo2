@@ -444,6 +444,9 @@ Para seleccionar cuál de los ponderadores ajustados por no respuesta utilizarem
 
 ```{r}
 data<- data.frame(deffK(muestra$w_nr_post), deffK(muestra$w_nr_rf), deffK(muestra$w_post_nr_rf))
+colnames(data)[1]<- "postest-NR"
+colnames(data)[2]<- "NR-RF"
+colnames(data)[3]<- "postest-NR-RF"
 data
 ```
 
@@ -453,57 +456,62 @@ El ajuste por no respuesta que computa el deff mas pequeño son los ponderadores
 
 Previo a la calibración post estratificada imcompleta (raking), calculamos el verdadero conteo poblacional de las tres variables poblacionales para luego contrastar con el tamaño estimado.
 
-```{r}
+```{r, include=FALSE}
 library(readxl)
 total_dpto <- read_excel("datos/proyecciones de población por dpto.xlsx")
-```
 
-```{r}
 sexo_y_edades_simples <- read_excel("datos/proyecciones de población por sexo y edades simples.xlsx")
-```
 
-```{r}
 sexo_y_edades_simples <- sexo_y_edades_simples %>% 
   mutate(edad = cut(edad, breaks=c(0, 14,20,25,30,40,50,60,Inf), right = FALSE))
-```
 
-```{r}
 sexo_y_edades_simples <- sexo_y_edades_simples %>%  pivot_longer(names_to="sexo", cols=c("hombres","mujeres"),values_to = "Freq")
 
-sexo_y_edades_simples$sexo <- ifelse(sexo_y_edades_simples$sexo=="hombres",1,2)
+sexo_y_edades_simples$sexo <-ifelse(sexo_y_edades_simples$sexo=="hombres",1,2)
 
 sexo_y_edades_simples$sexo <- as.factor(sexo_y_edades_simples$sexo)
-pop_count_sexo <- sexo_y_edades_simples %>% group_by(sexo) %>% summarise(Freq=sum(Freq))
-pop_count_sexo
 
-pop_count_edad = sexo_y_edades_simples %>% group_by(edad) %>%  summarise(Freq=sum(Freq))
-pop_count_edad
+pop_count_sexo <- sexo_y_edades_simples %>% group_by(sexo) %>% summarise(Freq=sum(Freq))
+
+pop_count_edad = sexo_y_edades_simples %>% group_by(edad) %>% summarise(Freq=sum(Freq))
 
 pop_count_dpto = total_dpto 
-pop_count_dpto$dpto <- as.factor(pop_count_dpto$dpto)
-pop_count_dpto <-pop_count_dpto %>%  rename(Freq=personas)
-pop_count_dpto$Freq <- as.integer(pop_count_dpto$Freq)
-pop_count_dpto
 
+pop_count_dpto$dpto <- as.factor(pop_count_dpto$dpto)
+
+pop_count_dpto <-pop_count_dpto %>%  rename(Freq=personas)
+
+pop_count_dpto$Freq <- as.integer(pop_count_dpto$Freq)
 ```
 
+```{r,include=TRUE}
+knitr::kable(pop_count_dpto)
+```
 
-Visualización de los post - estratos para ver si sirve para explicar la variable de interés.
+```{r,include=TRUE}
+knitr::kable(pop_count_edad)
+```
 
-```{r}
-ggplot(muestra, aes(x=ingreso, y=edad, fill=edad))+ geom_boxplot()
+```{r,include=TRUE}
+knitr::kable(pop_count_sexo)
+```
+
+Visualización de los post-estratos con las variables auxiliares para ver si sirven para explicar la variable de interés.
+
+```{r,include=TRUE, echo=FALSE, fig.height=3, fig.width=5}
+ggplot(muestra, aes(x=ingreso, y=edad, fill=edad))+ geom_boxplot() + theme_minimal() +theme(legend.position = "none") 
 ```
 
 Al hacer la visualización de los datos con la variable edad, vemos que ésta no explica la variabilidad de los datos, se podía decir que sí lo hace en el tramo de edad de 14 a 30 años, pero entre 30 y 60 años no logra captar la variabilidad de los datos, ya que da a entender que todas las personas entre las edades comprendidas entre 30 y 60 años tienen igual ingreso. Por lo tanto, la variable auxilar edad no es útil para mejorar las estimaciones. 
 
-```{r}
-ggplot(muestra, aes(x=ingreso, y=dpto, fill=dpto))+ geom_boxplot()
+```{r,include=TRUE, echo=FALSE, fig.height=3, fig.width=5}
+ggplot(muestra, aes(x=ingreso, y=dpto, fill=dpto))+ geom_boxplot()+ theme_minimal()+ theme(legend.position = "none")
 ```
 
 En la visualización de la variable departamento podemos notar que tampoco capta la variabilidad de los datos, el que mayor capta la variabilidad de los datos es el departamento de Montevideo. 
 
-```{r}
-ggplot(muestra, aes(x=ingreso, y=sexo, fill=sexo))+ geom_boxplot()
+```{r,include=TRUE, echo=FALSE, fig.height=3, fig.width=5}
+ggplot(muestra, aes(x=ingreso, y=sexo, fill=sexo))+ geom_boxplot() + theme_bw()
 ```
 
 En este caso, el sexo si es útil para explicar la ingreso de la persona. Si la persona es hombre tiene valor 1 y su ingreso es mayor a que si la persona fuera mujer.
@@ -515,38 +523,32 @@ Para la muestra seleccionada, usaremos como ponderadores los ajustados por clase
 ### Diseño muestral 
 
 ```{r}
-(diseño=svydesign(ids=~0,       #NO CLUSTER
-             strata=NULL, #NO ESTRATOS
-             weights=~w_nr_rf,  #PONDERADORES BASE
-             data=muestra))
+diseño <- muestra %>%
+  filter(R==1) %>% 
+  as_survey_design(ids = id_hogar, strata = estrato, weights = w_nr_post)
 ```
 
 ### Post estratificación incompleta raking con las variables auxiliares edad, sexo y departamento de la forma tradicional
 
 ```{r}
-
 rake1=rake(design=diseño, 
            sample.margins=list(~sexo,~edad,~dpto), 
            population.margins=list(pop_count_sexo,
                                    pop_count_edad,
                                    pop_count_dpto))
-
 ```
 
 ```{r}
 svytotal(~sexo,rake1)
-```
-
-```{r}
 svytotal(~edad,rake1)
-```
-
-```{r}
 svytotal(~dpto,rake1)
 ```
 
 ```{r}
-muestra = muestra %>% mutate(g_rake1=weights(rake1)/w_nr_rf)
+muestra = muestra %>% mutate(g_rake1=weights(rake1)/w_nr_post)
+```
+
+```{r,include=TRUE, echo=FALSE, fig.height=3, fig.width=4}
 ggplot(muestra, aes(x=g_rake1)) +geom_histogram(fill='blue',color='white',alpha=0.3)+theme_bw()
 ```
 
@@ -569,18 +571,19 @@ r2=calibrate(design=diseño,
 
 ```{r}
 svytotal(~sexo,r2)
-```
-
-```{r}
 svytotal(~edad,r2)
-```
-
-```{r}
 svytotal(~dpto,r2)
 ```
 
 ```{r}
-muestra = muestra %>% mutate(g_r2=weights(r2)/w_nr_rf)
+muestra = muestra %>% mutate(g_r2=weights(r2)/w_nr_post)
+```
+
+```{r,include=TRUE, echo=FALSE, fig.height=3, fig.width=4}
 ggplot(muestra, aes(x=g_r2)) +geom_histogram(fill='blue',color='white',alpha=0.3)+theme_bw()
+```
+
+```{r}
+mean(muestra$g_rake1)
 ```
 
