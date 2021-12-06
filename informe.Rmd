@@ -42,14 +42,10 @@ library(tidymodels)
 muestra <- read_xlsx("datos/muestra grupo 2.xlsx")
 
 # Convertir las variables categóricas a su formato correspondiente
-
 muestra <- muestra %>% 
   mutate(across(where(is.double) & !c(ingreso, w0, edad, R), as.factor))
 
-muestra <- muestra %>% 
-  mutate(
-    edad = cut(edad, breaks=c(0, 14,20,25,30,40,50,60,Inf), right = FALSE)
-    )
+muestra <- muestra %>% mutate(edad = cut(edad, breaks=c(0, 14,20,25,30,40,50,60,Inf), right = FALSE))
 
 ```
 
@@ -63,7 +59,6 @@ design1 <- muestra %>%
   as_survey_design(ids = id_hogar, strata = estrato, weights = w0)
 ```
 
-
 ```{r}
 ## Tasa de desempleo (desempleados/activos)
 
@@ -75,7 +70,6 @@ design1 %>%
   summarise(tasa_desempleo = survey_mean(deff = TRUE, vartype = c('se','cv')))
 ```
 
-
 La estimación puntual de la proporción de desempleados es 0,0824; mientras que el error estándar (la medida que empleamos para medir la variación del estimador entre muestra y muestra) es 0,0033. Otra medida de la calidad de un estimador $\hat{\theta}$ es su coeficiente de variación, que mide su dispersi\'on relativa. Se define como (Zoppollo, x):
 
 $$CV(\hat{\theta}) = \frac{\sqrt{\hat{V}(\hat{\theta})}}{\left|E(\hat{\theta})\right|}$$
@@ -84,8 +78,6 @@ El efecto diseño es una medida que permite comparar la eficiencia en términos 
 
 $$Deff(p(s), \hat{\theta}) = \frac{V_{p(s)}(\hat{\theta})}{V_{SI}(\hat{\theta})}$$
 En el caso del estimador de la proporción de desempleados su valor es 1,07; lo que indica que en este caso el diseño SI es un 7% más eficiente que el empleado.
-
-
 
 ```{r}
 ## Proporción de personas pobres
@@ -96,7 +88,6 @@ design1 %>%
 
 En cuanto a la proporción de personas pobres, la estimación puntual es de 0,0811. El error estándar se estima que es 0,004 aproximadamente, mientras que el coeficiente de variación se estima que es 0,05 aproximadamente. La estimación del efecto diseño es 2,84; un elevado valor que indica que el diseño empleado es altamente ineficiente en comparación con el SI, en particular casi tres veces más. 
 
-
 ```{r}
 ## Ingreso promedio
 design1 %>% 
@@ -105,21 +96,15 @@ design1 %>%
 
 La estimación puntual del ingreso promedio es 21799, siendo la estimación de su error estándar 240. Por otro lado, el coeficiente de variación toma el valor 0,011. La estimación del efecto diseño es 0,94 aproximadamente, por lo que en este caso el diseño empelado resulta más eficiente que el SI, un 6% más.  
 
-
 ```{r}
-
 muestra %>% 
   summarise(
     # tasa de no respuesta no ponderada
     nr_np = 1 - mean(R),
     # tasa de no respuesta ponderada
-    nr_p = 1 - weighted.mean(R, w0)
-  )
-
-
+    nr_p = 1 - weighted.mean(R, w0))
 
 summary(muestra$w0)
-
 
 #considerando por estratos
 
@@ -129,9 +114,7 @@ muestra %>%
     # tasa de no respuesta no ponderada
     nr_np = mean(R),
     # tasa de no respuesta ponderada
-    nr_p = weighted.mean(R, w0)
-    )
-
+    nr_p = weighted.mean(R, w0))
 
 #considerando por departamento
 
@@ -141,8 +124,7 @@ muestra %>%
    # tasa de no respuesta no ponderada
     nr_np = mean(R),
     # tasa de no respuesta ponderada
-    nr_p = weighted.mean(R, w0)
-    )
+    nr_p = weighted.mean(R, w0))
 
 #considerando por departamento
 
@@ -152,8 +134,7 @@ muestra %>%
    # tasa de no respuesta no ponderada
     nr_np = mean(R),
     # tasa de no respuesta ponderada
-    nr_p = weighted.mean(R, w0)
-    )
+    nr_p = weighted.mean(R, w0))
 ```
 
 La tasa de no respuesta no ponderada es del 47,4% mientras que la ponderada es del 47,6%. El hecho de que ambas tasas de no respuesta sean similares puede deberse a que los pesos $w_0$ no son muy disímiles entre sí, siendo su mínimo 104,4; su media 125.6 y su máximo 162. Al considerar la proporción de no respondentes por estrato se puede apreciar que ocurre lo mismo. En este caso se puede observar que la tasa de no respuesta varía según el estrato considerado, siendo el primero (Montevideo bajo) el que cuenta con la mayor tasa, del 56%, y el doceavo el que cuenta con la menor, del 46%. Estas diferencias se ven reflejadas también al considerar la tasa de no respondentes por departamento. Resultan bastante diferentes las tasas de no respuesta considerando los distintos segmentos de edad, el de 0 a 14 años y el de 60 en adelante son los que presentan menor tasa de no respuesta, siendo las de los primeros 50% (no ponderada) y 49% (ponderada) y 50% (no ponderada y ponderada) la de los segundos. 
@@ -187,7 +168,6 @@ ajuste_nr_estrato <-  muestra %>%
     tr = mean(R), 
     tr_w = weighted.mean(R, w0))
 
-
 muestra <- left_join(muestra , select(ajuste_nr_estrato, estrato, tr_w)) %>%
                 mutate(w_nr_post = w0/tr_w)  
 ```
@@ -215,21 +195,19 @@ donde $\bar{w} = n^{-1} \sum_sw_k$ es el promedio de los ponderadores.
 
 La práctica usual es calcularlo luego de realizar cada ajuste a los estimadores (no respuesta, calibración, en el caso de este trabajo). Se usa la regla empírica que $deff_w > 1,5$ indican que hay valores extremos de los ponderadores que repercuten en los finales.
 
-
 ```{r}
 # Efecto diseño de Kish
 deffK(muestra$w_nr_post)
 
 # Ver si solo se calcula con los respondentes
-deffK(muestra %>% 
+deffK_w_nr_post <- deffK(muestra %>% 
         filter(R ==1) %>%
         select(w_nr_post) %>% 
         pull())
+deffK_w_nr_post
 ```
 
 En nuestro caso, luego de realizar el ajuste por no respuesta $deff_w \simeq 1,033 < 1,5$, por lo que parecería que no resultó en valores extremos de los ponderadores que repercutirían en la variabilidad de los estimadores. 
-
-
 
 ```{r}
 #estimaciones empleando ajuste por no respuesta mediante clases de no respuesta
@@ -264,7 +242,6 @@ design2 %>%
 
 La estimación puntual del ingreso promedio disminuye, de 21799 a 21686, el error estándar presenta una disminución en una unidad. El coeficiente de variación con y sin ajuste son iguales hasta 4 lugares después de la coma, mientras que el efecto diseño presenta una leve disminución; pasa de 0,9355 a 0,9314.
 
-
 ## Estimación de propensiones simples de responder utilizando el algoritmo random forest.
 
 El ajuste por propensiones simples consiste en:
@@ -273,7 +250,6 @@ $$w_i^{nr} = \frac{1}{\pi_i \times \hat{\phi}_i}$$
 donde $\hat{\phi}_i$ es la propensión a responder de la unidad $i$, la cual se estima a partir de un modelo o un algoritmo, haciendo uso de variables auxiliares conocidas tanto para respondentes como no respondentes.
 
 El algoritmo elegido es *Random Forest* (RF), un método no paramétrico mediante el cual se hace uso de múltiples árboles de decisión para obtener una estimación de la propensión a responder de cada individuo a partir de alguna medida de resumen de la clasificación que hacen los árboles (por ejemplo el modo o la media). 
-
 
 ```{r}
 # modelamos la no respuesta con random forest
@@ -310,14 +286,15 @@ muestra <-  muestra %>%
 deffK(muestra$w_nr_rf)
 
 ### VER SI SE CALCULA SOLO CON RESPONDENTES
-deffK(muestra %>% 
+deffK_w_nr_rf <- deffK(muestra %>% 
         filter(R ==1) %>%
         select(w_nr_rf) %>% 
         pull())
-
+deffK_w_nr_rf
 ```
 
 Una vez ajustados los ponderadores por no respuesta por propensiones simples empleando las estimaciones obtenidas mediante *Random Forest*, el efecto diseño de Kish es de 1,074, que si bien es menor a 1,5, es mayor al valor obtenido luego del ajuste anterior.
+
 ```{r}
 # Estimaciones empleando ajuste por no respuesta mediante propensiones simples estimadas por random forest
 
@@ -333,7 +310,6 @@ design3 %>%
 ```
 
 La estimación de la tasa de desempleo al ajustar los ponderadores mediante propensiones simples estimadas por RF es del 8,2% aproximadamente, disminuyendo en comparación a la estimación realizada con los ponderadores ajustados mediante clases de no respuesta. Se destaca además un aumento del efecto diseño, que ahora es de 1,12 en comparación al de 1,09 del ajuste anterior.
-
 
 ```{r}
 ## Proporción de personas pobres
@@ -385,17 +361,16 @@ muestra <- muestra %>%
     ),
   w_post_nr_rf = w0/prop_clase_rf  
   )
-
 ```
 
 
 ```{r}
 # Efecto diseño de Kish
-deffK(muestra %>% 
+deffK_post_nr_rf <- deffK(muestra %>% 
         filter(R ==1) %>%
         select(w_post_nr_rf) %>% 
         pull())
-
+deffK_post_nr_rf
 ```
 
 El efecto diseño en este caso es de 1,067, con lo que al ser menor a 1,5 esto indicaría que el ajuste realizado parece no haber generado valores extremos de los ponderadores. Este valor es menor al obtenido en el ajuste por propensiones simples, pero mayor que el del ajuste por clases de no respuesta.
@@ -443,7 +418,7 @@ Para seleccionar cuál de los ponderadores ajustados por no respuesta utilizarem
 *(Ver si los deff estan bien calculados o se calculan con los respondentes)*
 
 ```{r}
-data<- data.frame(deffK(muestra$w_nr_post), deffK(muestra$w_nr_rf), deffK(muestra$w_post_nr_rf))
+data<- data.frame(deffK_w_nr_post, deffK_w_nr_rf, deffK_post_nr_rf)
 colnames(data)[1]<- "postest-NR"
 colnames(data)[2]<- "NR-RF"
 colnames(data)[3]<- "postest-NR-RF"
@@ -496,25 +471,25 @@ pop_count_edad
 pop_count_sexo
 ```
 
-Visualización de los post-estratos con las variables auxiliares para ver si sirven para explicar la variable de interés.
+Visualización de los post-estratos con las variables auxiliares para ver si explican a la variable de interés.
 
 ```{r,include=TRUE, echo=FALSE, fig.height=3, fig.width=5}
 ggplot(muestra, aes(x=ingreso, y=edad, fill=edad))+ geom_boxplot() + theme_minimal() +theme(legend.position = "none") 
 ```
 
-Al hacer la visualización de los datos con la variable edad, vemos que ésta no explica la variabilidad de los datos, se podía decir que sí lo hace en el tramo de edad de 14 a 30 años, pero entre 30 y 60 años no logra captar la variabilidad de los datos, ya que da a entender que todas las personas entre las edades comprendidas entre 30 y 60 años tienen igual ingreso. Por lo tanto, la variable auxilar edad no es útil para mejorar las estimaciones. 
+Al hacer la visualización de los datos con la variable edad, vemos que ésta no explica la variabilidad de los datos. Se podía decir que sí lo hace en el tramo de edad de 14 a 30 años, pero no lo hace en los tramos de 30 y 60 años, dando a entender que todas las personas entre dichas edades comprendidas  tienen igual ingreso. Por lo tanto, la variable auxilar edad no es útil para mejorar las estimaciones. 
 
 ```{r,include=TRUE, echo=FALSE, fig.height=3, fig.width=5}
 ggplot(muestra, aes(x=ingreso, y=dpto, fill=dpto))+ geom_boxplot()+ theme_minimal()+ theme(legend.position = "none")
 ```
 
-En la visualización de la variable departamento podemos notar que tampoco capta la variabilidad de los datos, el que mayor capta la variabilidad de los datos es el departamento de Montevideo. 
+En la visualización de la variable departamento podemos notar capta un poco mas la variabilidad e los datos pero no de forma notoria. El que mayor capta la variabilidad de los datos es el departamento de Montevideo. 
 
 ```{r,include=TRUE, echo=FALSE, fig.height=3, fig.width=5}
 ggplot(muestra, aes(x=ingreso, y=sexo, fill=sexo))+ geom_boxplot() + theme_bw()
 ```
 
-En este caso, el sexo si es útil para explicar la ingreso de la persona. Si la persona es hombre tiene valor 1 y su ingreso es mayor a que si la persona fuera mujer.
+Por último, el sexo sí es útil para explicar la ingreso de la persona. Si la persona es hombre tiene valor 1 y su ingreso es mayor a que si la persona fuera mujer.
  
 ### Muestra 
 
@@ -545,13 +520,28 @@ svytotal(~dpto,rake1)
 ```
 
 ```{r}
-muestra = muestra %>% mutate(g_rake1=weights(rake1)/w_nr_post)
+muestra = muestra  %>%
+  filter(R==1)%>% mutate(g_rake1=weights(rake1)/w_nr_post)
+
+ajuste1 = muestra %>%
+  filter(R==1)%>% mutate(g_rake1=weights(rake1)/w_nr_post) %>%  group_by(sexo) %>% summarise(ajustes1=mean(g_rake1))
+
+ajuste2 = muestra %>%
+  filter(R==1)%>% mutate(g_rake1=weights(rake1)/w_nr_post) %>%  group_by(dpto) %>% summarise(ajustes2=mean(g_rake1))
+
+ajuste3 = muestra %>%
+  filter(R==1)%>% mutate(g_rake1=weights(rake1)/w_nr_post) %>%  group_by(edad) %>% summarise(ajustes3=mean(g_rake1))
+```
+
+```{r}
+mean(muestra$g_rake1)
 ```
 
 ```{r,include=TRUE, echo=FALSE, fig.height=3, fig.width=4}
 ggplot(muestra, aes(x=g_rake1)) +geom_histogram(fill='blue',color='white',alpha=0.3)+theme_bw()
 ```
 
+Al verificar si los ponderadores calibrados cumple con la ecuación de calibración, podemos notar que sí lo hacen. Con la variable departamento lo hacen al valor exacto sin error, mientra que a la variable edad y sexo lo hacen con un error muy pequeño cercano a cero. 
 
 ### Post estratificación incompleta raking con las variables auxiliares edad, sexo y departamento usando la función calibrate
 
@@ -576,7 +566,8 @@ svytotal(~dpto,r2)
 ```
 
 ```{r}
-muestra = muestra %>% mutate(g_r2=weights(r2)/w_nr_post)
+muestra = muestra  %>%
+  filter(R==1)%>% mutate(g_r2=weights(r2)/w_nr_post)
 ```
 
 ```{r,include=TRUE, echo=FALSE, fig.height=3, fig.width=4}
@@ -584,8 +575,10 @@ ggplot(muestra, aes(x=g_r2)) +geom_histogram(fill='blue',color='white',alpha=0.3
 ```
 
 ```{r}
-mean(muestra$g_rake1)
+mean(muestra$g_r2)
 ```
+
+Al computar los ponderadores con la función raking, podemos notar que estima los valores poblacionales sin margen de error en las tres variables. 
 
 # Parte 4
 

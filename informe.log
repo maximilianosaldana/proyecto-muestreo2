@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.23 (TeX Live 2021/W32TeX) (preloaded format=pdflatex 2021.12.3)  4 DEC 2021 21:02
+This is pdfTeX, Version 3.141592653-2.6-1.40.23 (TeX Live 2021/W32TeX) (preloaded format=pdflatex 2021.12.3)  6 DEC 2021 13:05
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -656,100 +656,100 @@ LaTeX Font Info:    Trying to load font information for T1+lmtt on input line 1
 File: t1lmtt.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <10> on input line 137.
+(Font)              <10> on input line 136.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <7> on input line 137.
+(Font)              <7> on input line 136.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <5> on input line 137.
+(Font)              <5> on input line 136.
 LaTeX Font Info:    Font shape `T1/lmtt/bx/n' in size <10> not available
-(Font)              Font shape `T1/lmtt/b/n' tried instead on input line 152.
+(Font)              Font shape `T1/lmtt/b/n' tried instead on input line 148.
 
 LaTeX Font Warning: Font shape `T1/lmtt/bx/it' in size <10> not available
-(Font)              Font shape `T1/lmtt/b/sl' tried instead on input line 152.
+(Font)              Font shape `T1/lmtt/b/sl' tried instead on input line 148.
 
 LaTeX Font Info:    Trying to load font information for TS1+lmtt on input line 
-168.
+164.
 (c:/Users/fiore/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/lm/ts1lmtt.fd
 File: ts1lmtt.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 ) [2] [3] [4] [5]
-<informe_files/figure-latex/unnamed-chunk-7-1.pdf, id=89, 469.755pt x 325.215pt
->
+<informe_files/figure-latex/unnamed-chunk-7-1.pdf, id=106, 469.755pt x 325.215p
+t>
 File: informe_files/figure-latex/unnamed-chunk-7-1.pdf Graphic file (type pdf)
 <use informe_files/figure-latex/unnamed-chunk-7-1.pdf>
 Package pdftex.def Info: informe_files/figure-latex/unnamed-chunk-7-1.pdf  used
- on input line 381.
+ on input line 373.
 (pdftex.def)             Requested size: 375.80452pt x 260.17235pt.
-[6 <./informe_files/figure-latex/unnamed-chunk-7-1.pdf>]
-<informe_files/figure-latex/unnamed-chunk-9-1.pdf, id=102, 469.755pt x 325.215p
+<informe_files/figure-latex/unnamed-chunk-9-1.pdf, id=107, 469.755pt x 325.215p
 t>
 File: informe_files/figure-latex/unnamed-chunk-9-1.pdf Graphic file (type pdf)
 <use informe_files/figure-latex/unnamed-chunk-9-1.pdf>
 Package pdftex.def Info: informe_files/figure-latex/unnamed-chunk-9-1.pdf  used
- on input line 414.
+ on input line 405.
 (pdftex.def)             Requested size: 375.80452pt x 260.17235pt.
-[7 <./informe_files/figure-latex/unnamed-chunk-9-1.pdf>] [8] [9] [10] [11] [12]
-[13]
+[6 <./informe_files/figure-latex/unnamed-chunk-7-1.pdf>] [7 <./informe_files/fi
+gure-latex/unnamed-chunk-9-1.pdf>] [8] [9] [10] [11] [12] [13]
 
 Package hyperref Warning: Difference (2) between bookmark levels is greater 
-(hyperref)                than one, level fixed on input line 782.
+(hyperref)                than one, level fixed on input line 776.
 
 [14]
-<informe_files/figure-latex/unnamed-chunk-31-1.pdf, id=148, 361.35pt x 216.81pt
+<informe_files/figure-latex/unnamed-chunk-31-1.pdf, id=164, 361.35pt x 216.81pt
 >
 File: informe_files/figure-latex/unnamed-chunk-31-1.pdf Graphic file (type pdf)
 
 <use informe_files/figure-latex/unnamed-chunk-31-1.pdf>
 Package pdftex.def Info: informe_files/figure-latex/unnamed-chunk-31-1.pdf  use
-d on input line 906.
+d on input line 871.
 (pdftex.def)             Requested size: 361.36566pt x 216.81938pt.
-<informe_files/figure-latex/unnamed-chunk-32-1.pdf, id=149, 361.35pt x 216.81pt
+<informe_files/figure-latex/unnamed-chunk-32-1.pdf, id=165, 361.35pt x 216.81pt
 >
 File: informe_files/figure-latex/unnamed-chunk-32-1.pdf Graphic file (type pdf)
 
 <use informe_files/figure-latex/unnamed-chunk-32-1.pdf>
 Package pdftex.def Info: informe_files/figure-latex/unnamed-chunk-32-1.pdf  use
-d on input line 910.
+d on input line 875.
 (pdftex.def)             Requested size: 361.36566pt x 216.81938pt.
 [15 <./informe_files/figure-latex/unnamed-chunk-31-1.pdf>]
-<informe_files/figure-latex/unnamed-chunk-33-1.pdf, id=159, 361.35pt x 216.81pt
+<informe_files/figure-latex/unnamed-chunk-33-1.pdf, id=176, 361.35pt x 216.81pt
 >
 File: informe_files/figure-latex/unnamed-chunk-33-1.pdf Graphic file (type pdf)
 
 <use informe_files/figure-latex/unnamed-chunk-33-1.pdf>
 Package pdftex.def Info: informe_files/figure-latex/unnamed-chunk-33-1.pdf  use
-d on input line 914.
+d on input line 879.
 (pdftex.def)             Requested size: 361.36566pt x 216.81938pt.
 [16 <./informe_files/figure-latex/unnamed-chunk-32-1.pdf> <./informe_files/figu
 re-latex/unnamed-chunk-33-1.pdf>] [17]
-<informe_files/figure-latex/unnamed-chunk-38-1.pdf, id=182, 289.08pt x 216.81pt
+<informe_files/figure-latex/unnamed-chunk-39-1.pdf, id=198, 289.08pt x 216.81pt
 >
-File: informe_files/figure-latex/unnamed-chunk-38-1.pdf Graphic file (type pdf)
+File: informe_files/figure-latex/unnamed-chunk-39-1.pdf Graphic file (type pdf)
 
-<use informe_files/figure-latex/unnamed-chunk-38-1.pdf>
-Package pdftex.def Info: informe_files/figure-latex/unnamed-chunk-38-1.pdf  use
-d on input line 1016.
+<use informe_files/figure-latex/unnamed-chunk-39-1.pdf>
+Package pdftex.def Info: informe_files/figure-latex/unnamed-chunk-39-1.pdf  use
+d on input line 1001.
 (pdftex.def)             Requested size: 289.09251pt x 216.81938pt.
-[18 <./informe_files/figure-latex/unnamed-chunk-38-1.pdf>]
-<informe_files/figure-latex/unnamed-chunk-43-1.pdf, id=196, 289.08pt x 216.81pt
+[18 <./informe_files/figure-latex/unnamed-chunk-39-1.pdf>] [19]
+<informe_files/figure-latex/unnamed-chunk-44-1.pdf, id=217, 289.08pt x 216.81pt
 >
-File: informe_files/figure-latex/unnamed-chunk-43-1.pdf Graphic file (type pdf)
+File: informe_files/figure-latex/unnamed-chunk-44-1.pdf Graphic file (type pdf)
 
-<use informe_files/figure-latex/unnamed-chunk-43-1.pdf>
-Package pdftex.def Info: informe_files/figure-latex/unnamed-chunk-43-1.pdf  use
-d on input line 1108.
+<use informe_files/figure-latex/unnamed-chunk-44-1.pdf>
+Package pdftex.def Info: informe_files/figure-latex/unnamed-chunk-44-1.pdf  use
+d on input line 1096.
 (pdftex.def)             Requested size: 289.09251pt x 216.81938pt.
-[19] [20 <./informe_files/figure-latex/unnamed-chunk-43-1.pdf>] (./informe.aux
+[20 <./informe_files/figure-latex/unnamed-chunk-44-1.pdf>] [21] [22] [23] [24] 
+[25] [26] [27] [28] (./informe.aux
 LaTeX Info: Redefining \. on input line 25.
 LaTeX Info: Redefining \% on input line 25.
 )
 Package rerunfilecheck Info: File `informe.out' has not changed.
-(rerunfilecheck)             Checksum: B33C71A358BF8D0EB2C46BE46BA4B19F;4044.
+(rerunfilecheck)             Checksum: 519DD9A56C5413DEF01DCE595F7E95E9;5536.
  ) 
 Here is how much of TeX's memory you used:
- 13288 strings out of 480313
- 212943 string characters out of 5895780
- 525571 words of memory out of 5000000
- 30883 multiletter control sequences out of 15000+600000
+ 13316 strings out of 480313
+ 213654 string characters out of 5895780
+ 543913 words of memory out of 5000000
+ 30895 multiletter control sequences out of 15000+600000
  454559 words of font info for 71 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
  60i,6n,63p,1055b,478s stack positions out of 5000i,500n,10000p,200000b,80000s
@@ -776,10 +776,10 @@ sers/fiore/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtko10.pfb
 ><c:/Users/fiore/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtt1
 0.pfb><c:/Users/fiore/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/lm/
 lmtti10.pfb>
-Output written on informe.pdf (20 pages, 509203 bytes).
+Output written on informe.pdf (28 pages, 526425 bytes).
 PDF statistics:
- 301 PDF objects out of 1000 (max. 8388607)
- 230 compressed objects within 3 object streams
- 45 named destinations out of 1000 (max. 500000)
- 132 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 357 PDF objects out of 1000 (max. 8388607)
+ 278 compressed objects within 3 object streams
+ 61 named destinations out of 1000 (max. 500000)
+ 164 words of extra memory for PDF output out of 10000 (max. 10000000)
 
