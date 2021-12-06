@@ -632,40 +632,166 @@ summarise(ingreso_prom = survey_mean(ingreso, vartype=NULL))
 
 La estimación puntual del ingreso promedio para el total país realizada con los ponderadores finales es de 21597, inferior al 21799 estimado en la parte 1.
 
-## Cómputo de los SE
+
+## Estimaciones realizadas a nivel departamental
+
+```{r}
+#Tasa de desempleo
+#Al igual que en la parte 1, nos interesan los desempleados considerando el grupo de los activos.
+design_final %>%
+filter(activo == 1) %>%
+group_by(desocupado, dpto) %>%
+summarise(tasa_desempleo = survey_mean(deff = FALSE, vartype=c("se", "cv", "ci"), level=0.95)) %>%
+filter(desocupado==1) %>% 
+  arrange(desc(tasa_desempleo))
+```
+
+Realizamos la estimación de la tasa de desempleo, con su correspondiente error estándar, coeficiente de variación e intervalo de confianza al 95% para los distintos departamentos. Podemos ver que el departamento con una mayor tasa de desempleo es Montevideo con 0.0362, aunque también es el que tiene un mayor SE de 0.0203.
+
+```{r}
+#Proporción de personas pobres
+design_final %>%
+group_by(pobreza, dpto) %>%
+summarise(prop_pobres = survey_mean(deff = FALSE, vartype=c("se", "cv", "ci"), level=0.95)) %>%
+filter(pobreza==1) %>% 
+  arrange(desc(prop_pobres))
+```
+
+Para la proporción de personas pobres sucede algo similar, el departamento con mayor proporción de pobreza estimada es Montevideo con 0.495, estimación puntual que resulta excesivamente alta, y también tiene el mayor desvío estándar de 0.0244. El intervalo de confianza de la proporción de pobreza para este departamento es $(0.447, 0.543)$, que resulta en valores altos al igual que la estimación puntual. Hay una diferencia sustancial respecto al segundo departamento, con mayor proporción de pobreza estimada, que tiene una estimación puntual de 0.0942. Aquel que tiene la menor pobreza estimada, por su parte, tiene un intervalo de confianza que llega a tomar valores negativos, lo cual no tiene sentido desde el punto de vista interpretativo.
+
+
+```{r}
+## Ingreso promedio
+design_final %>%
+  group_by(dpto) %>% 
+summarise(ingreso_prom = survey_mean(ingreso, vartype=c("se", "cv", "ci"), level=0.95)) %>% 
+  arrange(desc(ingreso_prom))
+
+```
+
+Para la estimación del ingreso promedio a nivel de departamentos, tenemos nuevamente que el departamento con mayor ingreso promedio es Montevideo con 29188, si bien tiene el menor error estándar de 535.
+
+## Cálculo del error estándar a partir del método del último conglomerado y Bootstrap Rao Wu
+
+A continuación compararemos los errores estándar calculados anteriormente a nivel departamento utilizando el método del último conglomerado que utiliza por defecto el paquete survey, con los calculados utilizando Bootstrap Rao Wu.
+
 
 ```{r}
 #Al igual que en la parte 1, nos interesan los desempleados considerando el grupo de los activos.
 
 #Tasa de desempleo
-design_final %>%
+
+reps <- 500
+
+tasa_desempleo_survey <- design_final %>%
 filter(activo == 1) %>%
 group_by(desocupado) %>%
-summarise(tasa_desempleo = survey_mean(deff = FALSE, vartype=c("se", "cv", "ci"), level=0.95))
+summarise(tasa_desempleo = survey_mean(deff = FALSE)) %>% 
+  filter(desocupado==1) %>% 
+  mutate(dpto="pais") %>% 
+  select(-"desocupado")
+
 
 #Tasa de desempleo con SE estimado por bootstrap rao wu
 
+tasa_desempleo_boot <- 
 design_final %>%
-  filter(activo==1) %>% 
-  as.svrepdesign(design=., type="subbootstrap", replicates=500) %>% 
-  svymean(~desocupado, .)
+  filter(activo==1) %>%
+  as.svrepdesign(design=., type="subbootstrap", replicates=reps) %>%
+  svymean(~desocupado, .) %>% 
+  as.data.frame() %>% 
+  mutate(dpto="pais") %>% 
+  subset(., rownames(.) %in% "desocupado1") %>% 
+  `rownames<-`( NULL ) %>% 
+  rename(tasa_desempleo_boot="mean", tasa_desempleo_se_boot="SE")
 
+
+tasa_desempleo_survey_dptos <- design_final %>%
+  filter(activo == 1) %>%
+  group_by(desocupado, dpto) %>%
+  summarise(tasa_desempleo = survey_mean(deff = FALSE)) %>% 
+  filter(desocupado==1) %>% 
+  as.data.frame() %>% 
+  select(-"desocupado")
+
+
+tasa_desempleo_boot_dptos <- 
+  design_final %>%
+  filter(activo==1) %>%
+  as.svrepdesign(design=., type="subbootstrap", replicates=reps) %>% 
+  svyby(~desocupado, ~dpto, design=., svymean) %>% 
+  as.data.frame() %>% 
+  select(dpto , desocupado1, se1) %>% 
+  `rownames<-`( NULL ) %>% 
+  rename(tasa_desempleo_boot="desocupado1", tasa_desempleo_se_boot="se1")
+
+
+
+
+
+rbind(
+  left_join(tasa_desempleo_survey, tasa_desempleo_boot, by="dpto") %>% 
+    relocate(dpto, tasa_desempleo, tasa_desempleo_boot, tasa_desempleo_se, tasa_desempleo_se_boot),
+  left_join(tasa_desempleo_survey_dptos, tasa_desempleo_boot_dptos, by="dpto") %>% 
+    relocate(dpto, tasa_desempleo, tasa_desempleo_boot, tasa_desempleo_se, tasa_desempleo_se_boot)
+) 
+  
 ```
 
-Con la estimación del error estándar realizada por el método del último conglomerado, el SE estimado es 0.00338, mientras que el SE estimado a través de Bootstrap Rao Wu es 0.0032.
+Con la estimación del error estándar realizada por el método del último conglomerado, el SE estimado a nivel país es 0.00338, mientras que el SE estimado a través de Bootstrap Rao Wu es 0.0032.
 
 Basándonos en el SE estimado por el método del último conglomerado, tenemos que la estimación del coeficiente de variación (CV) es 0.0408, y que el intervalo de confianza estimado al 95% es $(0.0762, 0.0894)$.
 
 
 ```{r}
 #Proporción de personas pobres
+prop_pobres_survey <- 
 design_final %>%
 group_by(pobreza) %>%
-summarise(prop_pobres = survey_mean(deff = FALSE, vartype=c("se", "cv", "ci"), level=0.95))
+summarise(prop_pobres = survey_mean(deff = FALSE)) %>% 
+  filter(pobreza==1) %>% 
+  mutate(dpto="pais") %>% 
+  select(-"pobreza")
 
+
+
+prop_pobres_boot <-
+  design_final %>%
+  as.svrepdesign(design=., type="subbootstrap", replicates=reps) %>% 
+  svymean(~pobreza, .) %>% 
+  as.data.frame() %>% 
+  mutate(dpto="pais") %>% 
+  subset(., rownames(.) %in% "pobreza1") %>% 
+  `rownames<-`( NULL ) %>% 
+  rename(prop_pobreza_boot="mean", prop_pobreza_se_boot="SE")
+
+
+prop_pobres_survey_dptos <- 
 design_final %>%
-  as.svrepdesign(design=., type="subbootstrap", replicates=500) %>% 
-  svymean(~pobreza, .)
+group_by(pobreza, dpto) %>%
+summarise(prop_pobres = survey_mean(deff = FALSE)) %>% 
+  filter(pobreza==1) %>% 
+  as.data.frame() %>% 
+  select(-"pobreza")
+
+
+prop_pobres_boot_dptos <-
+  design_final %>%
+  as.svrepdesign(design=., type="subbootstrap", replicates=reps) %>% 
+  svyby(~pobreza, ~dpto, design=., svymean) %>% 
+  as.data.frame() %>% 
+  select(dpto, pobreza1, se1) %>% 
+  `rownames<-`( NULL ) %>% 
+  rename(prop_pobreza_boot="pobreza1", prop_pobreza_se_boot="se1")
+
+rbind(
+  left_join(prop_pobres_survey, prop_pobres_boot, by="dpto") %>% 
+    relocate(dpto, prop_pobres, prop_pobres_se, prop_pobreza_boot , prop_pobreza_se_boot),
+  left_join(prop_pobres_survey_dptos, prop_pobres_boot_dptos, by="dpto") %>% 
+    relocate(dpto, prop_pobres, prop_pobres_se, prop_pobreza_boot , prop_pobreza_se_boot)
+) 
+
+
 ```
 
 La estimación del SE realizada con el método del último conglomerado es 0.00365, mientras que la realizada con Bootstrap Rao Wu es 0.0038.
@@ -674,24 +800,46 @@ Tomando como base el error estándar calculado con el método del último conglo
 
 ```{r}
 ## Ingreso promedio
-design_final %>%
-summarise(ingreso_prom = survey_mean(ingreso, vartype=c("se", "cv", "ci"), level=0.95))
+ingreso_promedio_survey <- 
+  design_final %>%
+summarise(ingreso_prom = survey_mean(ingreso)) %>% 
+  mutate(dpto="pais")
+
+ingreso_promedio_boot <-
+  design_final %>% 
+  as.svrepdesign(design=., type="subbootstrap", replicates=reps) %>% 
+  svymean(~ingreso, design=.)  %>% 
+  as.data.frame() %>% 
+  mutate(dpto="pais") %>% 
+  as.data.frame %>%
+  `rownames<-`( NULL ) %>% 
+  rename(ingreso_promedio_boot="mean", ingreso_promedio_se_boot="SE")
+  
+
+ingreso_promedio_survey_dptos <- 
+  design_final %>%
+  group_by(dpto) %>% 
+  summarise(ingreso_prom = survey_mean(ingreso))
 
 
-boot_ing_prom <- as.svrepdesign(design=design_final, type="subbootstrap", replicates=500) #Para las estimaciones del SE con Bootstrap Rao Wu
+ingreso_promedio_boot_dptos <-
+  design_final %>% 
+  as.svrepdesign(design=., type="subbootstrap", replicates=reps) %>% 
+  svyby(~ingreso, ~dpto, design=., svymean) %>% 
+  as.data.frame() %>% 
+  `rownames<-`( NULL ) %>% 
+  rename(ingreso_promedio_boot="ingreso", ingreso_promedio_se_boot="se")
 
-#Estimación del SE con Bootstrap Rao Wu
-svymean(~ingreso, design=boot_ing_prom)
+
+rbind(
+  left_join(ingreso_promedio_survey, ingreso_promedio_boot, by="dpto") %>% 
+    relocate(dpto, ingreso_prom, ingreso_promedio_boot, ingreso_prom_se, ingreso_promedio_se_boot),
+  left_join(ingreso_promedio_survey_dptos, ingreso_promedio_boot_dptos, by="dpto") %>% 
+    relocate(dpto, ingreso_prom, ingreso_promedio_boot, ingreso_prom_se, ingreso_promedio_se_boot)
+) 
+
 ```
 
 Se calcula el error estándar del estimador utilizando dos métodos distintos. A partir del método del último conglomerado la estimación del SE es 248, mientras que la estimación realizada con Bootstrap Rao Wu es de 246.68.
 
 Partiendo del SE calculado con el método del último conglomerado, tenemos que un intervalo de confianza al 95% estimado para el ingreso promedio es $(21111, 22082)$, mientras que el coeficiente de variación estimado es de 0.0115.
-
-
-
-
-
-
-
-
