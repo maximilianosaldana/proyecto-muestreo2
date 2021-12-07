@@ -23,6 +23,7 @@ knitr::opts_chunk$set(
   out.width = '80%',
   fig.align="center"
   )
+
 ```
 
 ```{r librerias, include=FALSE}
@@ -33,11 +34,12 @@ library(survey)
 library(PracTools)
 library(readxl)
 library(tidymodels)
+library(xtable)
 ```
 
 # Parte 1
 
-```{r}
+```{r, include=FALSE}
 # Carga la muestra
 muestra <- read_xlsx("datos/muestra grupo 2.xlsx")
 
@@ -45,7 +47,8 @@ muestra <- read_xlsx("datos/muestra grupo 2.xlsx")
 muestra <- muestra %>% 
   mutate(across(where(is.double) & !c(ingreso, w0, edad, R), as.factor))
 
-muestra <- muestra %>% mutate(edad = cut(edad, breaks=c(0, 14,20,25,30,40,50,60,Inf), right = FALSE))
+muestra <- muestra %>% 
+  mutate(edad = cut(edad, breaks=c(0, 14,20,25,30,40,50,60,Inf), right = FALSE))
 
 ```
 
@@ -53,7 +56,6 @@ Se calculan las estimaciones puntuales de la tasa de desempleo, la proporción d
 
 ```{r}
 # Diseño usando los ponderadores originales, MCAR.
-##FPC?
 design1 <- muestra %>%
   filter(R==1) %>% 
   as_survey_design(ids = id_hogar, strata = estrato, weights = w0)
@@ -62,18 +64,19 @@ design1 <- muestra %>%
 ```{r}
 ## Tasa de desempleo (desempleados/activos)
 
-#REVISAR ESTO
-#Se piensa como un problema de estimación en dominios, nos interesan los desempleados considerando el grupo de los activos.
+#Se piensa como un problema de estimación en dominios
+#Nos interesan los desempleados considerando el grupo de los activos.
 design1 %>% 
   filter(activo == 1) %>% 
   group_by(desocupado) %>% 
   summarise(tasa_desempleo = survey_mean(deff = TRUE, vartype = c('se','cv')))
 ```
 
-La estimación puntual de la proporción de desempleados es 0,0824; mientras que el error estándar (la medida que empleamos para medir la variación del estimador entre muestra y muestra) es 0,0033. Otra medida de la calidad de un estimador $\hat{\theta}$ es su coeficiente de variación, que mide su dispersi\'on relativa. Se define como (Zoppollo, x):
+La estimación puntual de la proporción de desempleados es 0,0824 (1 representa a los desocupados y 0 a los ocupados); mientras que el error estándar (la medida que empleamos para medir la variación del estimador entre muestra y muestra) es 0,0033. Otra medida de la calidad de un estimador $\hat{\theta}$ es su coeficiente de variación, que mide su dispersión relativa. Se define como (Ferreira y Zoppollo, 2017):
 
 $$CV(\hat{\theta}) = \frac{\sqrt{\hat{V}(\hat{\theta})}}{\left|E(\hat{\theta})\right|}$$
 Y en el caso del estimador de la proporción de desempleados su estimación es 0,04.
+
 El efecto diseño es una medida que permite comparar la eficiencia en términos de variabilidad del estimador para el diseño utilizado, respecto al diseño aleatorio simple sin reposición que. Siendo $p(s)$ el diseño medible considerado, se define como:
 
 $$Deff(p(s), \hat{\theta}) = \frac{V_{p(s)}(\hat{\theta})}{V_{SI}(\hat{\theta})}$$
@@ -86,7 +89,7 @@ design1 %>%
   summarise(prop_pobres = survey_mean(deff = TRUE, vartype = c('se','cv')))
 ```
 
-En cuanto a la proporción de personas pobres, la estimación puntual es de 0,0811. El error estándar se estima que es 0,004 aproximadamente, mientras que el coeficiente de variación se estima que es 0,05 aproximadamente. La estimación del efecto diseño es 2,84; un elevado valor que indica que el diseño empleado es altamente ineficiente en comparación con el SI, en particular casi tres veces más. 
+En cuanto a la proporción de personas pobres, la estimación puntual es de 0,0811 (1 representa a las personas pobres y 0 los que no lo son). El error estándar se estima que es 0,004 aproximadamente, mientras que el coeficiente de variación se estima que es 0,05 aproximadamente. La estimación del efecto diseño es 2,84; un elevado valor que indica que el diseño empleado es altamente ineficiente en comparación con el SI, en particular casi tres veces más. 
 
 ```{r}
 ## Ingreso promedio
@@ -126,7 +129,7 @@ muestra %>%
     # tasa de no respuesta ponderada
     nr_p = weighted.mean(R, w0))
 
-#considerando por departamento
+#considerando por edad
 
 muestra %>% 
   group_by(edad) %>% 
@@ -139,11 +142,13 @@ muestra %>%
 
 La tasa de no respuesta no ponderada es del 47,4% mientras que la ponderada es del 47,6%. El hecho de que ambas tasas de no respuesta sean similares puede deberse a que los pesos $w_0$ no son muy disímiles entre sí, siendo su mínimo 104,4; su media 125.6 y su máximo 162. Al considerar la proporción de no respondentes por estrato se puede apreciar que ocurre lo mismo. En este caso se puede observar que la tasa de no respuesta varía según el estrato considerado, siendo el primero (Montevideo bajo) el que cuenta con la mayor tasa, del 56%, y el doceavo el que cuenta con la menor, del 46%. Estas diferencias se ven reflejadas también al considerar la tasa de no respondentes por departamento. Resultan bastante diferentes las tasas de no respuesta considerando los distintos segmentos de edad, el de 0 a 14 años y el de 60 en adelante son los que presentan menor tasa de no respuesta, siendo las de los primeros 50% (no ponderada) y 49% (ponderada) y 50% (no ponderada y ponderada) la de los segundos. 
 
+\newpage
+
 # Parte 2
 
 ## Ajuste por no respuesta por medio de post-estratos de no respuesta
 
-Bajo el enfoque de no respuesta considerado, el MAR (*Missing at Random*), se trabaja bajo el supuesto de que la no respuesta no depende de las variables de interés, pero sí es completamente explicada por variables auxiliares. Lo que se puede hacer en este caso es construir un modelo de respuesta basado en la información auxiliar (Ferreira y Zoppolo, ). 
+Bajo el enfoque de no respuesta considerado, el MAR (*Missing at Random*), se trabaja bajo el supuesto de que la no respuesta no depende de las variables de interés, pero sí es completamente explicada por variables auxiliares. Lo que se puede hacer en este caso es construir un modelo de respuesta basado en la información auxiliar (Ferreira y Zoppolo, 2017). 
 
 Siguiendo este enfoque, una manera de realizar el ajuste es mediante clases de no respuesta, creadas en base a información de las unidades presente en el marco muestral. Se crean $g$ clases y se asume que todas las unidades dentro de cada una de ellas tiene la misma probabilidad de responder, cuya fórmula es:
 
@@ -155,18 +160,15 @@ $$w_i^{nr} = \frac{1}{\pi_i \times \hat{\phi}_{i,g}}$$
 
 En nuestro caso, la información que podríamos emplear que se encuentra en el marco son los estratos. 
 
-```{r}
-ggplot(muestra, aes(x=ingreso, y=estrato))+ geom_boxplot()
 
-# Parecería que el estrato permitiría explicar mejor el ingreso
-```
 
 ```{r}
 ajuste_nr_estrato <-  muestra %>% 
   group_by(estrato) %>% 
   summarise(
     tr = mean(R), 
-    tr_w = weighted.mean(R, w0))
+    tr_w = weighted.mean(R, w0)
+    )
 
 muestra <- left_join(muestra , select(ajuste_nr_estrato, estrato, tr_w)) %>%
                 mutate(w_nr_post = w0/tr_w)  
@@ -181,12 +183,6 @@ ggplot(muestra) +
 ```
 
 
-Una medida global frecuentemente utilizada conocida como efecto diseño debido a la
-ponderación o efecto de Kish (Kish, 1965, 1992) y representa el incremento en la variabilidad de los
-estimadores por usar ponderadores distintos respecto al uso de el mismo ponderador para todos los
-caso y se define como uno más la varianza relativa de los ponderadores,
-
-
 Una forma de medir la variabilidad global de los ponderadores (que en caso de ser alta puede resultar en una variabilidad alta de los estimadores) es el efecto diseño de Kish, que representa el incremento en la variabilidad de los estimadores causada por usar ponderadores distintos para las unidades de la muestra con respecto a usar el mismo ponderador. Su fórmula es:
 
 $$deff_w = 1 + \frac{1}{n} \frac{\sum_s(w_k - \bar{w})^2}{\bar{w}^2}$$
@@ -197,17 +193,16 @@ La práctica usual es calcularlo luego de realizar cada ajuste a los estimadores
 
 ```{r}
 # Efecto diseño de Kish
-deffK(muestra$w_nr_post)
 
-# Ver si solo se calcula con los respondentes
-deffK_w_nr_post <- deffK(muestra %>% 
+(deffK_w_nr_post <- deffK(muestra %>% 
         filter(R ==1) %>%
         select(w_nr_post) %>% 
-        pull())
-deffK_w_nr_post
+        pull()
+      ))
+
 ```
 
-En nuestro caso, luego de realizar el ajuste por no respuesta $deff_w \simeq 1,033 < 1,5$, por lo que parecería que no resultó en valores extremos de los ponderadores que repercutirían en la variabilidad de los estimadores. 
+En nuestro caso, luego de realizar el ajuste por no respuesta $deff_w \simeq 1,031 < 1,5$, por lo que parecería que no resultó en valores extremos de los ponderadores que repercutirían en la variabilidad de los estimadores. 
 
 ```{r}
 #estimaciones empleando ajuste por no respuesta mediante clases de no respuesta
@@ -283,17 +278,16 @@ muestra <-  muestra %>%
 
 ```{r}
 # Calculamos el efecto diseño de Kish
-deffK(muestra$w_nr_rf)
 
-### VER SI SE CALCULA SOLO CON RESPONDENTES
-deffK_w_nr_rf <- deffK(muestra %>% 
+(deffK_w_nr_rf <- deffK(muestra %>% 
         filter(R ==1) %>%
         select(w_nr_rf) %>% 
-        pull())
-deffK_w_nr_rf
+        pull()
+      ))
+
 ```
 
-Una vez ajustados los ponderadores por no respuesta por propensiones simples empleando las estimaciones obtenidas mediante *Random Forest*, el efecto diseño de Kish es de 1,074, que si bien es menor a 1,5, es mayor al valor obtenido luego del ajuste anterior.
+Una vez ajustados los ponderadores por no respuesta por propensiones simples empleando las estimaciones obtenidas mediante *Random Forest*, el efecto diseño de Kish es de 1,077, que si bien es menor a 1,5, es mayor al valor obtenido luego del ajuste anterior.
 
 ```{r}
 # Estimaciones empleando ajuste por no respuesta mediante propensiones simples estimadas por random forest
@@ -366,14 +360,15 @@ muestra <- muestra %>%
 
 ```{r}
 # Efecto diseño de Kish
-deffK_post_nr_rf <- deffK(muestra %>% 
+(deffK_post_nr_rf <-  deffK(muestra %>% 
         filter(R ==1) %>%
         select(w_post_nr_rf) %>% 
-        pull())
-deffK_post_nr_rf
+        pull()
+       ))
+
 ```
 
-El efecto diseño en este caso es de 1,067, con lo que al ser menor a 1,5 esto indicaría que el ajuste realizado parece no haber generado valores extremos de los ponderadores. Este valor es menor al obtenido en el ajuste por propensiones simples, pero mayor que el del ajuste por clases de no respuesta.
+El efecto diseño en este caso es de 1,07, con lo que al ser menor a 1,5 esto indicaría que el ajuste realizado parece no haber generado valores extremos de los ponderadores. Este valor es menor al obtenido en el ajuste por propensiones simples, pero mayor que el del ajuste por clases de no respuesta.
 
 ```{r}
 # Estimaciones empleando clases de no respuesta en base a propensiones estimadas por RF
@@ -413,9 +408,7 @@ La estimación puntual del ingreso en este caso está entre las otras dos anteri
 # Parte 3
 ### Calibración de los ponderadores
 
-Para seleccionar cuál de los ponderadores ajustados por no respuesta utilizaremos para la calibración, tomamos como criterio seleccionar el que compute el deff mas chico.
-
-*(Ver si los deff estan bien calculados o se calculan con los respondentes)*
+Para seleccionar cuál de los ponderadores ajustados por no respuesta utilizaremos para la calibración, tomamos como criterio seleccionar el que compute el menor efecto diseño de Kish. Bajo este criterio se elijen los ponderadores ajustados por clases de no respuesta.
 
 ```{r}
 data<- data.frame(deffK_w_nr_post, deffK_w_nr_rf, deffK_post_nr_rf)
@@ -425,11 +418,11 @@ colnames(data)[3]<- "postest-NR-RF"
 data
 ```
 
-El ajuste por no respuesta que computa el deff mas pequeño son los ponderadores ajustados por clases de no respuesta.
-
 ### Conteos poblacionales de las tres variables auxiliares
 
-Previo a la calibración post estratificada imcompleta (raking), calculamos el verdadero conteo poblacional de las tres variables poblacionales para luego contrastar con el tamaño estimado.
+Para los estimadores calibrados utilizaremos el método de post-estratificación incompleta (raking). El objetivo es calibrar los ponderadores utilizando las variables auxiliares edad, sexo y departamento. El raking se realiza post-estratificando una variable por turno, obteniendo los factores de ajustes $g_i$ como el resultado de un ajuste iterativo de los totales estimados de las marginales, hasta alcanzar un error prefijado entre las estimaciones y los verdaderos totales poblacionales.
+
+Previo a la calibración post-estratificada incompleta (raking), calculamos el verdadero conteo poblacional de las tres variables a emplear para luego contrastar con el tamaño estimado.
 
 ```{r, include=FALSE}
 library(readxl)
@@ -477,28 +470,31 @@ Visualización de los post-estratos con las variables auxiliares para ver si exp
 ggplot(muestra, aes(x=ingreso, y=edad, fill=edad))+ geom_boxplot() + theme_minimal() +theme(legend.position = "none") 
 ```
 
-Al hacer la visualización de los datos con la variable edad, vemos que ésta no explica la variabilidad de los datos. Se podía decir que sí lo hace en el tramo de edad de 14 a 30 años, pero no lo hace en los tramos de 30 y 60 años, dando a entender que todas las personas entre dichas edades comprendidas  tienen igual ingreso. Por lo tanto, la variable auxilar edad no es útil para mejorar las estimaciones. 
+Al hacer la visualización de los datos con la variable edad, vemos que esta explica en cierta medida la variabilidad de los datos, notándose que a mayor edad hasta los 60 años la distribución de los ingresos tiende a acumularse a mayores valores, luego de los 60 hay una caída en el ingreso mediano. Por lo tanto, la variable auxiliar edad puede resultar útil para mejorar las estimaciones. 
 
 ```{r,include=TRUE, echo=FALSE, fig.height=3, fig.width=5}
 ggplot(muestra, aes(x=ingreso, y=dpto, fill=dpto))+ geom_boxplot()+ theme_minimal()+ theme(legend.position = "none")
 ```
 
-En la visualización de la variable departamento podemos notar capta un poco mas la variabilidad e los datos pero no de forma notoria. El que mayor capta la variabilidad de los datos es el departamento de Montevideo. 
+En la visualización de la variable ingreso por departamento podemos notar que no hay diferencias considerables a nivel ingresos entre los departamentos, con la excepción de Montevideo (Departamento 1), el cual cuenta con una mayor cantidad de atípicos. 
 
 ```{r,include=TRUE, echo=FALSE, fig.height=3, fig.width=5}
-ggplot(muestra, aes(x=ingreso, y=sexo, fill=sexo))+ geom_boxplot() + theme_bw()
+ggplot(muestra, aes(x=ingreso, y=sexo, fill=sexo)) + 
+  geom_boxplot() + 
+  theme_bw() +
+ scale_fill_discrete(name = "Sexo", labels = c("Hombre", "Mujer"))
+  
 ```
 
-Por último, el sexo sí es útil para explicar la ingreso de la persona. Si la persona es hombre tiene valor 1 y su ingreso es mayor a que si la persona fuera mujer.
+Por último, el sexo resulta útil para explicar la ingreso de la persona. Observándose que la mediana de la distribución de los ingresos para los hombres resulta mayor a la de las mujeres. 
  
-### Muestra 
-
-Para la muestra seleccionada, usaremos como ponderadores los ajustados por clases de no respuesta.
 
 ### Diseño muestral 
 
+Para la muestra seleccionada, usaremos como ponderadores los ajustados por clases de no respuesta.
+
 ```{r}
-diseño <- muestra %>%
+diseno <- muestra %>%
   filter(R==1) %>% 
   as_survey_design(ids = id_hogar, strata = estrato, weights = w_nr_post)
 ```
@@ -506,11 +502,12 @@ diseño <- muestra %>%
 ### Post estratificación incompleta raking con las variables auxiliares edad, sexo y departamento de la forma tradicional
 
 ```{r}
-rake1=rake(design=diseño, 
+rake1 <- rake(design=diseno, 
            sample.margins=list(~sexo,~edad,~dpto), 
            population.margins=list(pop_count_sexo,
                                    pop_count_edad,
-                                   pop_count_dpto))
+                                   pop_count_dpto)
+           )
 ```
 
 ```{r}
@@ -519,18 +516,28 @@ svytotal(~edad,rake1)
 svytotal(~dpto,rake1)
 ```
 
-```{r}
-muestra = muestra  %>%
-  filter(R==1)%>% mutate(g_rake1=weights(rake1)/w_nr_post)
+```{r, include=FALSE}
+muestra <-  muestra  %>%
+  filter(R==1) %>% 
+  mutate(g_rake1=weights(rake1)/w_nr_post)
 
-ajuste1 = muestra %>%
-  filter(R==1)%>% mutate(g_rake1=weights(rake1)/w_nr_post) %>%  group_by(sexo) %>% summarise(ajustes1=mean(g_rake1))
+ajuste1 <-  muestra %>%
+  filter(R==1) %>% 
+  mutate(g_rake1=weights(rake1)/w_nr_post) %>%  
+  group_by(sexo) %>% 
+  summarise(ajustes1=mean(g_rake1))
 
-ajuste2 = muestra %>%
-  filter(R==1)%>% mutate(g_rake1=weights(rake1)/w_nr_post) %>%  group_by(dpto) %>% summarise(ajustes2=mean(g_rake1))
+ajuste2 <-  muestra %>%
+  filter(R==1) %>% 
+  mutate(g_rake1=weights(rake1)/w_nr_post) %>%  
+  group_by(dpto) %>% 
+  summarise(ajustes2=mean(g_rake1))
 
-ajuste3 = muestra %>%
-  filter(R==1)%>% mutate(g_rake1=weights(rake1)/w_nr_post) %>%  group_by(edad) %>% summarise(ajustes3=mean(g_rake1))
+ajuste3 <-  muestra %>%
+  filter(R==1) %>% 
+  mutate(g_rake1=weights(rake1)/w_nr_post) %>%  
+  group_by(edad) %>% 
+  summarise(ajustes3=mean(g_rake1))
 ```
 
 ```{r}
@@ -538,7 +545,9 @@ mean(muestra$g_rake1)
 ```
 
 ```{r,include=TRUE, echo=FALSE, fig.height=3, fig.width=4}
-ggplot(muestra, aes(x=g_rake1)) +geom_histogram(fill='blue',color='white',alpha=0.3)+theme_bw()
+ggplot(muestra, aes(x=g_rake1)) + 
+  geom_histogram(fill='blue',color='white',alpha=0.3) + 
+  theme_bw()
 ```
 
 Al verificar si los ponderadores calibrados cumple con la ecuación de calibración, podemos notar que sí lo hacen. Con la variable departamento lo hacen al valor exacto sin error, mientra que a la variable edad y sexo lo hacen con un error muy pequeño cercano a cero. 
@@ -546,14 +555,14 @@ Al verificar si los ponderadores calibrados cumple con la ecuación de calibraci
 ### Post estratificación incompleta raking con las variables auxiliares edad, sexo y departamento usando la función calibrate
 
 ```{r}
-counts=c(sum(pop_count_sexo$Freq),
+counts <- c(sum(pop_count_sexo$Freq),
          pop_count_dpto$Freq[-1],
          pop_count_sexo$Freq[-1],
          pop_count_edad$Freq[-1])
 ```
 
 ```{r}
-r2=calibrate(design=diseño, 
+r2 <- calibrate(design=diseno, 
             formula=~dpto+sexo+edad,
             population=counts,
             calfun="raking")
@@ -566,12 +575,14 @@ svytotal(~dpto,r2)
 ```
 
 ```{r}
-muestra = muestra  %>%
-  filter(R==1)%>% mutate(g_r2=weights(r2)/w_nr_post)
+muestra <-  muestra  %>%
+  filter(R==1) %>% 
+  mutate(g_r2 = weights(r2)/w_nr_post)
 ```
 
 ```{r,include=TRUE, echo=FALSE, fig.height=3, fig.width=4}
-ggplot(muestra, aes(x=g_r2)) +geom_histogram(fill='blue',color='white',alpha=0.3)+theme_bw()
+ggplot(muestra, aes(x=g_r2)) + 
+  geom_histogram(fill='blue',color='white',alpha=0.3)+theme_bw()
 ```
 
 ```{r}
@@ -580,12 +591,14 @@ mean(muestra$g_r2)
 
 Al computar los ponderadores con la función raking, podemos notar que estima los valores poblacionales sin margen de error en las tres variables. 
 
+\newpage
+
 # Parte 4
 
 ```{r}
 #Calculo los ponderadores finales ajustados por no respuesta y calibrados 
 muestra <- muestra %>% 
-  mutate(w_nr_calibrados = w_nr_post*g_rake1)
+  mutate(w_nr_calibrados = w_nr_post*g_r2)
 
 design_final <- muestra %>% 
   filter(R==1) %>% 
@@ -600,13 +613,14 @@ set.seed(1)
 ```{r}
 #Tasa de desempleo
 #Al igual que en la parte 1, nos interesan los desempleados considerando el grupo de los activos.
+
 design_final %>%
 filter(activo == 1) %>%
 group_by(desocupado) %>%
 summarise(tasa_desempleo = survey_mean(deff = FALSE, vartype=NULL))
 ```
 
-Tenemos que la estimación puntual de la tasa de desempleo utilizando los ponderadores ajustados por no respuesta y calibrados es 0.0828, respecto a la tasa de 0.0824 que habíamos obtenido en la parte 1.
+Tenemos que la estimación puntual de la tasa de desempleo utilizando los ponderadores ajustados por no respuesta y calibrados es 0,0843, respecto a la tasa de 0,0824 que habíamos obtenido en la parte 1.
 
 ```{r}
 #Proporción de personas pobres
@@ -615,7 +629,7 @@ group_by(pobreza) %>%
 summarise(prop_pobres = survey_mean(deff = FALSE, vartype=NULL))
 ```
 
-La proporción de personas pobres estimada con los ponderadores finales es de 0.0766, mientras que la estimación realizada en la parte 1 era de 0.0811.
+La proporción de personas pobres estimada con los ponderadores finales es de 0,088, mientras que la estimación realizada en la parte 1 era de 0,0811.
 
 ```{r}
 ## Ingreso promedio
@@ -623,7 +637,7 @@ design_final %>%
 summarise(ingreso_prom = survey_mean(ingreso, vartype=NULL))
 ```
 
-La estimación puntual del ingreso promedio para el total país realizada con los ponderadores finales es de 21597, inferior al 21799 estimado en la parte 1.
+La estimación puntual del ingreso promedio para el total país realizada con los ponderadores finales es de 20864, inferior al 21799 estimado en la parte 1.
 
 
 ## Estimaciones realizadas a nivel departamental
@@ -631,26 +645,43 @@ La estimación puntual del ingreso promedio para el total país realizada con lo
 ```{r}
 #Tasa de desempleo
 #Al igual que en la parte 1, nos interesan los desempleados considerando el grupo de los activos.
-design_final %>%
-filter(activo == 1) %>%
-group_by(desocupado, dpto) %>%
-summarise(tasa_desempleo = survey_mean(deff = FALSE, vartype=c("se", "cv", "ci"), level=0.95)) %>%
-filter(desocupado==1) %>% 
-  arrange(desc(tasa_desempleo))
+
+(tasa_desempleo_survey_dptos <- svyby(
+  ~desocupado, 
+  by =~dpto, 
+  design_final %>% filter(activo == 1), 
+  FUN= svymean, 
+  vartype=c("se","cv","ci")) %>% 
+  transmute(dpto, 
+            tasa_desempleo = desocupado1, 
+            tasa_desempleo_se = se.desocupado1,
+            CI_lower = ci_l.desocupado1,
+            CI_upper= ci_u.desocupado1, 
+            CV = cv.desocupado1))
+
+
 ```
 
-Realizamos la estimación de la tasa de desempleo, con su correspondiente error estándar, coeficiente de variación e intervalo de confianza al 95% para los distintos departamentos. Podemos ver que el departamento con una mayor tasa de desempleo es Montevideo con 0.0362, aunque también es el que tiene un mayor SE de 0.0203.
+Realizamos la estimación de la tasa de desempleo, con su correspondiente error estándar, coeficiente de variación e intervalo de confianza al 95% para los distintos departamentos. Podemos ver que el departamento con una mayor tasa de desempleo es el número 6 con 0,16. El que tiene un mayor error estándar estimado es el número 17, con un valor de 0,031.
 
 ```{r}
 #Proporción de personas pobres
-design_final %>%
-group_by(pobreza, dpto) %>%
-summarise(prop_pobres = survey_mean(deff = FALSE, vartype=c("se", "cv", "ci"), level=0.95)) %>%
-filter(pobreza==1) %>% 
-  arrange(desc(prop_pobres))
+
+(prop_pobres_survey_dptos <- svyby(
+  ~pobreza,
+  by =~dpto, design_final , 
+  FUN= svymean,
+  vartype=c("se","cv","ci")) %>% 
+  transmute(
+    dpto, 
+    prop_pobres = pobreza1,
+    prop_pobres_se = se.pobreza1,
+    CI_lower = ci_l.pobreza1, 
+    CI_upper = ci_u.pobreza1, 
+    CV = cv.pobreza1))
 ```
 
-Para la proporción de personas pobres sucede algo similar, el departamento con mayor proporción de pobreza estimada es Montevideo con 0.495, estimación puntual que resulta excesivamente alta, y también tiene el mayor desvío estándar de 0.0244. El intervalo de confianza de la proporción de pobreza para este departamento es $(0.447, 0.543)$, que resulta en valores altos al igual que la estimación puntual. Hay una diferencia sustancial respecto al segundo departamento, con mayor proporción de pobreza estimada, que tiene una estimación puntual de 0.0942. Aquel que tiene la menor pobreza estimada, por su parte, tiene un intervalo de confianza que llega a tomar valores negativos, lo cual no tiene sentido desde el punto de vista interpretativo.
+El departamento con mayor proporción de pobreza estimada es Montevideo con 0,13 aproximadamente. El intervalo de confianza de la proporción de pobreza para este departamento es $(0,113;0,144)$. El que tiene mayor desvío es el departamente número 19, con un desvío de 0,034. El departamento que le sigue a Montevideo en proporción de pobres es el número 11.
 
 
 ```{r}
@@ -658,16 +689,18 @@ Para la proporción de personas pobres sucede algo similar, el departamento con 
 design_final %>%
   group_by(dpto) %>% 
 summarise(ingreso_prom = survey_mean(ingreso, vartype=c("se", "cv", "ci"), level=0.95)) %>% 
-  arrange(desc(ingreso_prom))
+  arrange(desc(ingreso_prom)) %>% 
+  rename(CI_low = "ingreso_prom_low", CI_upp = "ingreso_prom_upp")
 
 ```
 
-Para la estimación del ingreso promedio a nivel de departamentos, tenemos nuevamente que el departamento con mayor ingreso promedio es Montevideo con 29188, si bien tiene el menor error estándar de 535.
+Para la estimación del ingreso promedio a nivel de departamentos, tenemos nuevamente que el departamento con mayor ingreso promedio es Montevideo con 26514, si bien tiene el menor error estándar de 535.
 
 ## Cálculo del error estándar a partir del método del último conglomerado y Bootstrap Rao Wu
 
 A continuación compararemos los errores estándar calculados anteriormente a nivel departamento utilizando el método del último conglomerado que utiliza por defecto el paquete survey, con los calculados utilizando Bootstrap Rao Wu.
 
+El método del último conglomerado se utiliza para la estimación de los errores estándar en diseños por conglomerados, donde los conglomerados son seleccionados con probabilidades proporcionales al tamaño. Por su parte, el Bootstrap es un método de remuestreo que genera replicas de la población original mediante muestras aleatorias con reposición de la muestra, las cuales se utilizan para calcular varias réplicas del estadístico de interés y a partir de esas réplicas estimar propiedades del estadístico como su desviación estándar. En particular utilizamos Bootstrap Rao Wu el cual se aplica a diseños aleatorios, estratificados y en varias etapas de selección.
 
 ```{r}
 #Al igual que en la parte 1, nos interesan los desempleados considerando el grupo de los activos.
@@ -685,6 +718,7 @@ summarise(tasa_desempleo = survey_mean(deff = FALSE)) %>%
   select(-"desocupado")
 
 
+
 #Tasa de desempleo con SE estimado por bootstrap rao wu
 
 tasa_desempleo_boot <- 
@@ -699,42 +733,45 @@ design_final %>%
   rename(tasa_desempleo_boot="mean", tasa_desempleo_se_boot="SE")
 
 
-tasa_desempleo_survey_dptos <- design_final %>%
-  filter(activo == 1) %>%
-  group_by(desocupado, dpto) %>%
-  summarise(tasa_desempleo = survey_mean(deff = FALSE)) %>% 
-  filter(desocupado==1) %>% 
-  as.data.frame() %>% 
-  select(-"desocupado")
+design_bs_desocup <- as.svrepdesign(
+  design = design_final %>% filter(activo == 1), 
+  type="subbootstrap", 
+  replicates=reps)
+
+tasa_desempleo_boot_dptos <- svyby(
+  ~desocupado, 
+  by = ~dpto, 
+  design_bs_desocup, 
+  svymean) %>% 
+  transmute(
+    dpto, 
+    tasa_desempleo_boot = desocupado1, 
+    tasa_desempleo_se_boot = se2)
 
 
-tasa_desempleo_boot_dptos <- 
-  design_final %>%
-  filter(activo==1) %>%
-  as.svrepdesign(design=., type="subbootstrap", replicates=reps) %>% 
-  svyby(~desocupado, ~dpto, design=., svymean) %>% 
-  as.data.frame() %>% 
-  select(dpto , desocupado1, se1) %>% 
-  `rownames<-`( NULL ) %>% 
-  rename(tasa_desempleo_boot="desocupado1", tasa_desempleo_se_boot="se1")
+```
+
+
+```{r, include = FALSE}
+tasa_desempleo_survey <- tasa_desempleo_survey %>% 
+  select(dpto, tasa_desempleo, tasa_desempleo_se)
+
+tasa_desempleo_survey_dptos <- tasa_desempleo_survey_dptos %>% 
+  select(-c(CI_lower, CI_upper, CV))
+```
 
 
 
-
-
+```{r}
 rbind(
   left_join(tasa_desempleo_survey, tasa_desempleo_boot, by="dpto") %>% 
     relocate(dpto, tasa_desempleo, tasa_desempleo_boot, tasa_desempleo_se, tasa_desempleo_se_boot),
   left_join(tasa_desempleo_survey_dptos, tasa_desempleo_boot_dptos, by="dpto") %>% 
     relocate(dpto, tasa_desempleo, tasa_desempleo_boot, tasa_desempleo_se, tasa_desempleo_se_boot)
 ) 
-  
 ```
 
-Con la estimación del error estándar realizada por el método del último conglomerado, el SE estimado a nivel país es 0.00338, mientras que el SE estimado a través de Bootstrap Rao Wu es 0.0032.
-
-Basándonos en el SE estimado por el método del último conglomerado, tenemos que la estimación del coeficiente de variación (CV) es 0.0408, y que el intervalo de confianza estimado al 95% es $(0.0762, 0.0894)$.
-
+Con la estimación del error estándar realizada por el método del último conglomerado, el SE estimado a nivel país es 0.00342, mientras que el SE estimado a través de Bootstrap Rao Wu es 0,00339. 
 
 ```{r}
 #Proporción de personas pobres
@@ -745,7 +782,6 @@ summarise(prop_pobres = survey_mean(deff = FALSE)) %>%
   filter(pobreza==1) %>% 
   mutate(dpto="pais") %>% 
   select(-"pobreza")
-
 
 
 prop_pobres_boot <-
@@ -759,24 +795,30 @@ prop_pobres_boot <-
   rename(prop_pobreza_boot="mean", prop_pobreza_se_boot="SE")
 
 
-prop_pobres_survey_dptos <- 
-design_final %>%
-group_by(pobreza, dpto) %>%
-summarise(prop_pobres = survey_mean(deff = FALSE)) %>% 
-  filter(pobreza==1) %>% 
-  as.data.frame() %>% 
-  select(-"pobreza")
+# Proporción de pobres por departamento
+
+prop_pobres_survey_dptos <- svyby(~pobreza, by =~dpto, design_final , FUN= svymean) %>% 
+  transmute(dpto, prop_pobres = pobreza1, prop_pobres_se = se.pobreza1)
 
 
-prop_pobres_boot_dptos <-
-  design_final %>%
-  as.svrepdesign(design=., type="subbootstrap", replicates=reps) %>% 
-  svyby(~pobreza, ~dpto, design=., svymean) %>% 
-  as.data.frame() %>% 
-  select(dpto, pobreza1, se1) %>% 
-  `rownames<-`( NULL ) %>% 
-  rename(prop_pobreza_boot="pobreza1", prop_pobreza_se_boot="se1")
+design_bs <- as.svrepdesign(design = design_final, type = "subbootstrap", replicates=reps)
 
+
+prop_pobres_boot_dptos <- svyby(~pobreza, by =~dpto, design_bs , FUN= svymean) %>% 
+  transmute(dpto, prop_pobreza_boot = pobreza1, prop_pobreza_se_boot = se2)
+
+
+
+
+```
+
+```{r, include = FALSE}
+prop_pobres_survey <- prop_pobres_survey %>% select(dpto, prop_pobres, prop_pobres_se)
+```
+
+
+
+```{r}
 rbind(
   left_join(prop_pobres_survey, prop_pobres_boot, by="dpto") %>% 
     relocate(dpto, prop_pobres, prop_pobres_se, prop_pobreza_boot , prop_pobreza_se_boot),
@@ -784,12 +826,12 @@ rbind(
     relocate(dpto, prop_pobres, prop_pobres_se, prop_pobreza_boot , prop_pobreza_se_boot)
 ) 
 
-
 ```
 
-La estimación del SE realizada con el método del último conglomerado es 0.00365, mientras que la realizada con Bootstrap Rao Wu es 0.0038.
 
-Tomando como base el error estándar calculado con el método del último conglomerado, tenemos que el coeficiente de variación estimado es 0.0476, y que el intervalo de confianza estimado al 95% para la proporción de personas pobres es $(0.0695, 0.0838)$.
+La estimación del SE a nivel país realizada con el método del último conglomerado es 0.00411, mientras que la realizada con Bootstrap Rao Wu es 0.00410. El departamento con el mayor SE bajo los dos métodos es el número 19.
+
+
 
 ```{r}
 ## Ingreso promedio
@@ -807,7 +849,8 @@ ingreso_promedio_boot <-
   as.data.frame %>%
   `rownames<-`( NULL ) %>% 
   rename(ingreso_promedio_boot="mean", ingreso_promedio_se_boot="SE")
-  
+ 
+# Ingreso promedio por departamento 
 
 ingreso_promedio_survey_dptos <- 
   design_final %>%
@@ -823,16 +866,31 @@ ingreso_promedio_boot_dptos <-
   `rownames<-`( NULL ) %>% 
   rename(ingreso_promedio_boot="ingreso", ingreso_promedio_se_boot="se")
 
+```
 
+
+```{r}
 rbind(
   left_join(ingreso_promedio_survey, ingreso_promedio_boot, by="dpto") %>% 
     relocate(dpto, ingreso_prom, ingreso_promedio_boot, ingreso_prom_se, ingreso_promedio_se_boot),
   left_join(ingreso_promedio_survey_dptos, ingreso_promedio_boot_dptos, by="dpto") %>% 
     relocate(dpto, ingreso_prom, ingreso_promedio_boot, ingreso_prom_se, ingreso_promedio_se_boot)
 ) 
-
 ```
 
-Se calcula el error estándar del estimador utilizando dos métodos distintos. A partir del método del último conglomerado la estimación del SE es 248, mientras que la estimación realizada con Bootstrap Rao Wu es de 246.68.
 
-Partiendo del SE calculado con el método del último conglomerado, tenemos que un intervalo de confianza al 95% estimado para el ingreso promedio es $(21111, 22082)$, mientras que el coeficiente de variación estimado es de 0.0115.
+ A partir del método del último conglomerado la estimación del SE para la estimación del ingreso a nivel país es 230,93, mientras que la estimación realizada con Bootstrap Rao Wu es de 231,03. El departamento con una mayor estimación del SE es el número 7, con un valor 1759,7.
+
+\newpage
+
+# Bibliografía
+
+Greg Freedman Ellis and Ben Schneider (2021). *srvyr: 'dplyr'-Like Syntax for Summary Statistics of Survey Data*. R package
+  version 1.0.1. https://CRAN.R-project.org/package=srvyr
+
+Ferreira, J. P. y Zoppolo, G. (2017). *Métodos de ponderación en encuestas complejas: recomendaciones para una buena práctica.*
+
+T. Lumley (2020) *"survey: analysis of complex survey samples"*. R package version 4.0.
+
+R Core Team (2021). R: *A language and environment for statistical computing*. R Foundation for Statistical Computing,
+  Vienna, Austria. URL https://www.R-project.org/.
